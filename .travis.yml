@@ -1,0 +1,10 @@
+language: dart
+
+dart_task:
+  - dartfmt
+  - dartanalyzer: --fatal-infos --fatal-warnings .
+
+dart:
+  - stable
+  - beta
+  - dev

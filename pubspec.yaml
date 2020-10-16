@@ -1,0 +1,16 @@
+name: bluez
+version: 0.0.0-dev.1
+
+description:
+  Provides a client to connect to BlueZ - the Linux Bluetooth stack.
+
+homepage: https://github.com/canonical/bluez.dart
+
+environment:
+  sdk: '>=2.7.2 <3.0.0'
+
+dependencies:
+  dbus: ^0.0.0-dev.20
+
+dev_dependencies:
+  pedantic: ^1.9.0
