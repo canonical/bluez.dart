@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dbus/dbus.dart';
 
+/// A Bluetooth adapter.
 class BlueZAdapter {
   final String _adapterInterfaceName = 'org.bluez.Adapter1';
 
@@ -20,46 +21,77 @@ class BlueZAdapter {
 
   // FIXME: SetDiscoveryFilter
 
+  /// Start discovery of devices on this adapter.
   void startDiscovery() async {
     await _object.callMethod(_adapterInterfaceName, 'StartDiscovery', []);
   }
 
+  /// Stop discovery of devices on this adapter.
   void stopDiscovery() async {
     await _object.callMethod(_adapterInterfaceName, 'stopDiscovery', []);
   }
 
   // FIXME: Class
 
+  /// MAC address of this adapter.
   String get address =>
       _object.getStringProperty(_adapterInterfaceName, 'Address');
 
   String get addressType =>
       _object.getStringProperty(_adapterInterfaceName, 'AddressType');
 
+  /// The alternative name for this adapter.
   String get alias => _object.getStringProperty(_adapterInterfaceName, 'Alias');
 
+  /// Sets the alternative name for this adapter.
+  set alias(String value) =>
+      _object.setProperty(_adapterInterfaceName, 'Alias', DBusString(value));
+
+  /// True if this adapter is discoverable by other Bluetooth devices.
   bool get discoverable =>
       _object.getBooleanProperty(_adapterInterfaceName, 'Discoverable');
+
+  /// Sets if this adapter can be discovered by other Bluetooth devices.
+  set discoverable(bool value) => _object.setProperty(
+      _adapterInterfaceName, 'Discoverable', DBusBoolean(value));
 
   int get discoverableTimeout =>
       _object.getUint32Property(_adapterInterfaceName, 'DiscoverableTimeout');
 
+  set discoverableTimeout(int value) => _object.setProperty(
+      _adapterInterfaceName, 'DiscoverableTimeout', DBusUint32(value));
+
+  /// True if currently discovering devices.
   bool get discovering =>
       _object.getBooleanProperty(_adapterInterfaceName, 'Discovering');
 
   String get modalias =>
       _object.getStringProperty(_adapterInterfaceName, 'Modalias');
 
+  /// Name of this adapter.
   String get name => _object.getStringProperty(_adapterInterfaceName, 'Name');
+
+  /// True if other Bluetooth devices can pair with this adapter.
+  bool get pairable =>
+      _object.getBooleanProperty(_adapterInterfaceName, 'Pairable');
+
+  /// Sets if other Bluetooth devices can pair with this adapter.
+  set pairable(bool value) => _object.setProperty(
+      _adapterInterfaceName, 'Pairable', DBusBoolean(value));
 
   int get pairableTimeout =>
       _object.getUint32Property(_adapterInterfaceName, 'PairableTimeout');
 
-  bool get pairing =>
-      _object.getBooleanProperty(_adapterInterfaceName, 'Pairing');
+  set pairableTimeout(int value) => _object.setProperty(
+      _adapterInterfaceName, 'PairableTimeout', DBusUint32(value));
 
+  /// True if this adapter is powered on.
   bool get powered =>
       _object.getBooleanProperty(_adapterInterfaceName, 'Powered');
+
+  /// Sets if this adapter is powered on.
+  set powered(bool value) =>
+      _object.setProperty(_adapterInterfaceName, 'Powered', DBusBoolean(value));
 
   List<String> get roles =>
       _object.getStringArrayProperty(_adapterInterfaceName, 'Roles');
@@ -68,6 +100,7 @@ class BlueZAdapter {
       _object.getStringArrayProperty(_adapterInterfaceName, 'UUIDS');
 }
 
+/// A Bluetooth device.
 class BlueZDevice {
   final String _deviceInterfaceName = 'org.bluez.Device1';
 
@@ -80,8 +113,14 @@ class BlueZDevice {
         .propertiesChangedStreamController.stream;
   }
 
+  /// Connect to this device.
   void connect() async {
     await _object.callMethod(_deviceInterfaceName, 'Connect', []);
+  }
+
+  /// Disconnect from this device
+  void disconnect() async {
+    await _object.callMethod(_deviceInterfaceName, 'Disconnect', []);
   }
 
   void connectProfile(String uuid) async {
@@ -89,43 +128,55 @@ class BlueZDevice {
         .callMethod(_deviceInterfaceName, 'ConnectProfile', [DBusString(uuid)]);
   }
 
-  void disconnect() async {
-    await _object.callMethod(_deviceInterfaceName, 'Disconnect', []);
-  }
-
   void disconnectProfile(String uuid) async {
     await _object.callMethod(
         _deviceInterfaceName, 'DisconnectProfile', [DBusString(uuid)]);
   }
 
+  /// Pair with this device.
   void pair() async {
     await _object.callMethod(_deviceInterfaceName, 'Pair', []);
   }
 
+  /// Cancel a pairing that is in progress.
   void cancelPairing() async {
     await _object.callMethod(_deviceInterfaceName, 'CancelPairing', []);
   }
 
   // FIXME: Adapter
 
-  // FIXME: Appearance
+  /// MAC address of this device.
+  String get address =>
+      _object.getStringProperty(_deviceInterfaceName, 'Address');
 
   String get addressType =>
       _object.getStringProperty(_deviceInterfaceName, 'AddressType');
 
+  /// An alternative name for this device.
   String get alias => _object.getStringProperty(_deviceInterfaceName, 'Alias');
+
+  /// Sets the alternative name for this device.
+  set alias(String value) =>
+      _object.setProperty(_deviceInterfaceName, 'Alias', DBusString(value));
+
+  // FIXME: Appearance
 
   bool get blocked =>
       _object.getBooleanProperty(_deviceInterfaceName, 'Blocked');
 
+  set blocked(bool value) =>
+      _object.setProperty(_deviceInterfaceName, 'Blocked', DBusBoolean(value));
+
   // FIXME: Class
 
+  /// True if this device is currently connected.
   bool get connected =>
       _object.getBooleanProperty(_deviceInterfaceName, 'Connected');
 
   bool get legacyPairing =>
       _object.getBooleanProperty(_deviceInterfaceName, 'LegacyPairing');
 
+  /// Icon name for this device.
   String get icon => _object.getStringProperty(_deviceInterfaceName, 'Icon');
 
   // FIXME: ManufacturerData
@@ -133,10 +184,13 @@ class BlueZDevice {
   String get modalias =>
       _object.getStringProperty(_deviceInterfaceName, 'Modalias');
 
+  /// Name of this device.
   String get name => _object.getStringProperty(_deviceInterfaceName, 'Name');
 
+  /// True if the device is currently paired.
   bool get paired => _object.getBooleanProperty(_deviceInterfaceName, 'Paired');
 
+  /// Signal strength received from the devide.
   int get rssi => _object.getInt16Property(_deviceInterfaceName, 'RSSI');
 
   // FIXME: ServiceData
@@ -147,6 +201,9 @@ class BlueZDevice {
   bool get trusted =>
       _object.getBooleanProperty(_deviceInterfaceName, 'Trusted');
 
+  set trusted(bool value) =>
+      _object.setProperty(_deviceInterfaceName, 'Trusted', DBusBoolean(value));
+
   int get txPower => _object.getInt16Property(_deviceInterfaceName, 'TxPower');
 
   List<String> get uuids =>
@@ -154,6 +211,9 @@ class BlueZDevice {
 
   bool get wakeAllowed =>
       _object.getBooleanProperty(_deviceInterfaceName, 'WakeAllowed');
+
+  set wakeAllowed(bool value) => _object.setProperty(
+      _deviceInterfaceName, 'WakeAllowed', DBusBoolean(value));
 }
 
 class _BlueZInterface {
@@ -277,8 +337,24 @@ class _BlueZObject extends DBusRemoteObject {
 
 /// A client that connects to BlueZ.
 class BlueZClient {
+  /// Stream of adapters as they are added.
+  Stream<BlueZAdapter> get adapterAddedStream =>
+      _adapterAddedStreamController.stream;
+
+  /// Stream of adapters as they are removed.
+  Stream<BlueZAdapter> get adapterRemovedStream =>
+      _adapterRemovedStreamController.stream;
+
+  /// Stream of devices as they are added.
+  Stream<BlueZDevice> get deviceAddedStream =>
+      _deviceAddedStreamController.stream;
+
+  /// Stream of devices as they are removed.
+  Stream<BlueZDevice> get deviceRemovedStream =>
+      _deviceRemovedStreamController.stream;
+
   /// The bus this client is connected to.
-  final DBusClient systemBus;
+  final DBusClient _systemBus;
 
   /// The root D-Bus BlueZ object.
   DBusRemoteObject _root;
@@ -298,17 +374,8 @@ class BlueZClient {
   final _deviceRemovedStreamController =
       StreamController<BlueZDevice>.broadcast();
 
-  Stream<BlueZAdapter> get adapterAddedStream =>
-      _adapterAddedStreamController.stream;
-  Stream<BlueZAdapter> get adapterRemovedStream =>
-      _adapterRemovedStreamController.stream;
-  Stream<BlueZDevice> get deviceAddedStream =>
-      _deviceAddedStreamController.stream;
-  Stream<BlueZDevice> get deviceRemovedStream =>
-      _deviceRemovedStreamController.stream;
-
   /// Creates a new BlueZ client connected to the system D-Bus.
-  BlueZClient(this.systemBus);
+  BlueZClient(this._systemBus);
 
   /// Connects to the BlueZ daemon.
   /// Must be called before accessing methods and properties.
@@ -318,7 +385,7 @@ class BlueZClient {
       return;
     }
 
-    _root = DBusRemoteObject(systemBus, 'org.bluez', DBusObjectPath('/'));
+    _root = DBusRemoteObject(_systemBus, 'org.bluez', DBusObjectPath('/'));
 
     // Subscribe to changes
     print('subscribe');
@@ -331,7 +398,7 @@ class BlueZClient {
           object.updateInterfaces(signal.interfacesAndProperties);
         } else {
           object = _BlueZObject(
-              systemBus, signal.changedPath, signal.interfacesAndProperties);
+              _systemBus, signal.changedPath, signal.interfacesAndProperties);
           _objects[signal.changedPath] = object;
           print('new');
           if (_isAdapter(object)) {
@@ -365,18 +432,12 @@ class BlueZClient {
     var objects = await _root.getManagedObjects();
     objects.forEach((objectPath, interfacesAndProperties) {
       _objects[objectPath] =
-          _BlueZObject(systemBus, objectPath, interfacesAndProperties);
+          _BlueZObject(_systemBus, objectPath, interfacesAndProperties);
     });
   }
 
-  bool _isAdapter(_BlueZObject object) {
-    return object.interfaces.containsKey('org.bluez.Adapter1');
-  }
-
-  bool _isDevice(_BlueZObject object) {
-    return object.interfaces.containsKey('org.bluez.Device1');
-  }
-
+  /// The adapters present on this system.
+  /// Use [adapterAddedStream] and [adapterRemovedStream] to detect when this list changes.
   List<BlueZAdapter> get adapters {
     var adapters = <BlueZAdapter>[];
     for (var object in _objects.values) {
@@ -387,6 +448,8 @@ class BlueZClient {
     return adapters;
   }
 
+  /// The devices on this system.
+  /// Use [deviceAddedStream] and [deviceRemovedStream] to detect when this list changes.
   List<BlueZDevice> get devices {
     var devices = <BlueZDevice>[];
     for (var object in _objects.values) {
@@ -403,5 +466,13 @@ class BlueZClient {
       _objectManagerSubscription.cancel();
       _objectManagerSubscription = null;
     }
+  }
+
+  bool _isAdapter(_BlueZObject object) {
+    return object.interfaces.containsKey('org.bluez.Adapter1');
+  }
+
+  bool _isDevice(_BlueZObject object) {
+    return object.interfaces.containsKey('org.bluez.Device1');
   }
 }
