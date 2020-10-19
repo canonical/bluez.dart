@@ -9,6 +9,11 @@ class BlueZAdapter {
 
   BlueZAdapter(this._object);
 
+  Stream<List<String>> get propertiesChangedStream {
+    return _object.interfaces[_adapterInterfaceName]
+        .propertiesChangedStreamController.stream;
+  }
+
   // FIXME: GetDiscoveryFilters
 
   // FIXME: RemoveDevice
@@ -69,6 +74,11 @@ class BlueZDevice {
   final _BlueZObject _object;
 
   BlueZDevice(this._object);
+
+  Stream<List<String>> get propertiesChangedStream {
+    return _object.interfaces[_deviceInterfaceName]
+        .propertiesChangedStreamController.stream;
+  }
 
   void connect() async {
     await _object.callMethod(_deviceInterfaceName, 'Connect', []);
@@ -279,6 +289,24 @@ class BlueZClient {
   // Subscription to object manager signals.
   StreamSubscription _objectManagerSubscription;
 
+  final _adapterAddedStreamController =
+      StreamController<BlueZAdapter>.broadcast();
+  final _adapterRemovedStreamController =
+      StreamController<BlueZAdapter>.broadcast();
+  final _deviceAddedStreamController =
+      StreamController<BlueZDevice>.broadcast();
+  final _deviceRemovedStreamController =
+      StreamController<BlueZDevice>.broadcast();
+
+  Stream<BlueZAdapter> get adapterAddedStream =>
+      _adapterAddedStreamController.stream;
+  Stream<BlueZAdapter> get adapterRemovedStream =>
+      _adapterRemovedStreamController.stream;
+  Stream<BlueZDevice> get deviceAddedStream =>
+      _deviceAddedStreamController.stream;
+  Stream<BlueZDevice> get deviceRemovedStream =>
+      _deviceRemovedStreamController.stream;
+
   /// Creates a new BlueZ client connected to the system D-Bus.
   BlueZClient(this.systemBus);
 
@@ -293,20 +321,36 @@ class BlueZClient {
     _root = DBusRemoteObject(systemBus, 'org.bluez', DBusObjectPath('/'));
 
     // Subscribe to changes
+    print('subscribe');
     var signals = _root.subscribeObjectManagerSignals();
     _objectManagerSubscription = signals.listen((signal) {
+      print(signal);
       if (signal is DBusObjectManagerInterfacesAddedSignal) {
         var object = _objects[signal.changedPath];
         if (object != null) {
           object.updateInterfaces(signal.interfacesAndProperties);
         } else {
-          _objects[signal.changedPath] = _BlueZObject(
+          object = _BlueZObject(
               systemBus, signal.changedPath, signal.interfacesAndProperties);
+          _objects[signal.changedPath] = object;
+          print('new');
+          if (_isAdapter(object)) {
+            print(' adapter');
+            _adapterAddedStreamController.add(BlueZAdapter(object));
+          } else if (_isDevice(object)) {
+            print(' device');
+            _deviceAddedStreamController.add(BlueZDevice(object));
+          }
         }
       } else if (signal is DBusObjectManagerInterfacesRemovedSignal) {
         var object = _objects[signal.changedPath];
         if (object != null) {
           object.removeInterfaces(signal.interfaces);
+          if (_isAdapter(object)) {
+            _adapterRemovedStreamController.add(BlueZAdapter(object));
+          } else if (_isDevice(object)) {
+            _deviceRemovedStreamController.add(BlueZDevice(object));
+          }
         }
       } else if (signal is DBusPropertiesChangedSignal) {
         var object = _objects[signal.path];
@@ -325,10 +369,18 @@ class BlueZClient {
     });
   }
 
+  bool _isAdapter(_BlueZObject object) {
+    return object.interfaces.containsKey('org.bluez.Adapter1');
+  }
+
+  bool _isDevice(_BlueZObject object) {
+    return object.interfaces.containsKey('org.bluez.Device1');
+  }
+
   List<BlueZAdapter> get adapters {
     var adapters = <BlueZAdapter>[];
     for (var object in _objects.values) {
-      if (object.interfaces.containsKey('org.bluez.Adapter1')) {
+      if (_isAdapter(object)) {
         adapters.add(BlueZAdapter(object));
       }
     }
@@ -338,7 +390,7 @@ class BlueZClient {
   List<BlueZDevice> get devices {
     var devices = <BlueZDevice>[];
     for (var object in _objects.values) {
-      if (object.interfaces.containsKey('org.bluez.Device1')) {
+      if (_isDevice(object)) {
         devices.add(BlueZDevice(object));
       }
     }
