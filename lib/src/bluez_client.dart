@@ -524,10 +524,8 @@ class BlueZClient {
     _root = DBusRemoteObject(_systemBus, 'org.bluez', DBusObjectPath('/'));
 
     // Subscribe to changes
-    print('subscribe');
     var signals = _root.subscribeObjectManagerSignals();
     _objectManagerSubscription = signals.listen((signal) {
-      print(signal);
       if (signal is DBusObjectManagerInterfacesAddedSignal) {
         var object = _objects[signal.changedPath];
         if (object != null) {
@@ -536,12 +534,9 @@ class BlueZClient {
           object = _BlueZObject(
               _systemBus, signal.changedPath, signal.interfacesAndProperties);
           _objects[signal.changedPath] = object;
-          print('new');
           if (_isAdapter(object)) {
-            print(' adapter');
             _adapterAddedStreamController.add(BlueZAdapter(object));
           } else if (_isDevice(object)) {
-            print(' device');
             _deviceAddedStreamController.add(BlueZDevice(this, object));
           }
         }
