@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:dbus/dbus.dart';
 
+import 'package:convert/convert.dart';
+
 /// Types of Bluetooth address.
 enum BlueZAddressType { public, random }
 
@@ -238,13 +240,13 @@ class BlueZDevice {
   String get icon => _object.getStringProperty(_deviceInterfaceName, 'Icon');
 
   /// Manufacturer specific advertisement data.
-  Map<BlueZManufacturerId, List<int>> get manufacturerData {
+  Map<int, List<int>> get manufacturerData {
     var value =
         _object.getCachedProperty(_deviceInterfaceName, 'ManufacturerData');
     if (value == null) {
       return {};
     }
-    if (value.signature != DBusSignature('a{sv}')) {
+    if (value.signature != DBusSignature('a{qv}')) {
       return {};
     }
     List<int> processValue(DBusVariant value) {
@@ -258,8 +260,7 @@ class BlueZDevice {
     }
 
     return (value as DBusDict).children.map((key, value) => MapEntry(
-        BlueZManufacturerId((key as DBusUint16).value),
-        processValue(value as DBusVariant)));
+        (key as DBusUint16).value, processValue(value as DBusVariant)));
   }
 
   /// Remote Device ID information in modalias format used by the kernel and udev.
@@ -276,7 +277,7 @@ class BlueZDevice {
   int get rssi => _object.getInt16Property(_deviceInterfaceName, 'RSSI');
 
   /// Service advertisement data.
-  Map<BlueZUUID, List<int>> get serviceData {
+  Map<String, List<int>> get serviceData {
     var value = _object.getCachedProperty(_deviceInterfaceName, 'ServiceData');
     if (value == null) {
       return {};
@@ -295,8 +296,17 @@ class BlueZDevice {
     }
 
     return (value as DBusDict).children.map((key, value) => MapEntry(
-        BlueZUUID((key as DBusString).value),
-        processValue(value as DBusVariant)));
+        (key as DBusString).value, processValue(value as DBusVariant)));
+  }
+
+  /// UUIDs that indicate the available remote services.
+  List<String> get uuids {
+    var value = _object.getStringArrayProperty(_deviceInterfaceName, 'UUIDs');
+    if (value == null) {
+      return [];
+    } else {
+      return value;
+    }
   }
 
   /// True if service discovery has been resolved.
@@ -313,11 +323,6 @@ class BlueZDevice {
 
   /// Advertised transmit power level.
   int get txPower => _object.getInt16Property(_deviceInterfaceName, 'TxPower');
-
-  /// UUIDs that indicate the available remote services.
-  List<BlueZUUID> get uuids => _object
-      .getStringArrayProperty(_deviceInterfaceName, 'UUIDS')
-      .map((value) => BlueZUUID(value));
 
   /// True if the device can wake the host from system suspend.
   bool get wakeAllowed =>
