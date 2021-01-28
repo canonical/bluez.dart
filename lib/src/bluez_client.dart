@@ -315,9 +315,14 @@ class BlueZDevice {
   int get txPower => _object.getInt16Property(_deviceInterfaceName, 'TxPower');
 
   /// UUIDs that indicate the available remote services.
-  List<BlueZUUID> get uuids => _object
-      .getStringArrayProperty(_deviceInterfaceName, 'UUIDS')
-      .map((value) => BlueZUUID(value));
+  List<String> get uuids {
+    var value = _object.getStringArrayProperty(_deviceInterfaceName, 'UUIDs');
+    if (value == null) {
+      return [];
+    } else {
+      return value;
+    }
+  }
 
   /// True if the device can wake the host from system suspend.
   bool get wakeAllowed =>
