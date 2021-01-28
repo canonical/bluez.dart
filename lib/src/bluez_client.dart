@@ -44,9 +44,27 @@ class BlueZAdapter {
         .propertiesChangedStreamController.stream;
   }
 
-  // FIXME: GetDiscoveryFilters
+  /// Gets the available filters that can be given to [setDiscoveryFilter].
+  Future<List<String>> getDiscoveryFilters() async {
+    var result = await _object
+        .callMethod(_adapterInterfaceName, 'GetDiscoveryFilters', []);
+    var values = result.returnValues;
+    if (values.length != 1 || values[0].signature != DBusSignature('as')) {
+      throw 'GetDiscoveryFilters returned invalid result: ${values}';
+    }
+    return (values[0] as DBusArray)
+        .children
+        .map((v) => (v as DBusString).value)
+        .toList();
+  }
 
-  // FIXME: SetDiscoveryFilter
+  /// Sets the device discovery filter for the caller. [filter] contains filter values as returnd by [getDiscoveryFilters].
+  void setDiscoveryFilter(Map<String, DBusValue> filter) async {
+    await _object.callMethod(_adapterInterfaceName, 'SetDiscoveryFilter', [
+      DBusDict(DBusSignature('s'), DBusSignature('v'),
+          filter.map((k, v) => MapEntry(DBusString(k), v)))
+    ]);
+  }
 
   /// Start discovery of devices on this adapter.
   void startDiscovery() async {
