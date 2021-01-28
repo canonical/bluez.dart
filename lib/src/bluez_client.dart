@@ -238,13 +238,13 @@ class BlueZDevice {
   String get icon => _object.getStringProperty(_deviceInterfaceName, 'Icon');
 
   /// Manufacturer specific advertisement data.
-  Map<BlueZManufacturerId, List<int>> get manufacturerData {
+  Map<int, List<int>> get manufacturerData {
     var value =
         _object.getCachedProperty(_deviceInterfaceName, 'ManufacturerData');
     if (value == null) {
       return {};
     }
-    if (value.signature != DBusSignature('a{sv}')) {
+    if (value.signature != DBusSignature('a{qv}')) {
       return {};
     }
     List<int> processValue(DBusVariant value) {
@@ -258,8 +258,7 @@ class BlueZDevice {
     }
 
     return (value as DBusDict).children.map((key, value) => MapEntry(
-        BlueZManufacturerId((key as DBusUint16).value),
-        processValue(value as DBusVariant)));
+        (key as DBusUint16).value, processValue(value as DBusVariant)));
   }
 
   /// Remote Device ID information in modalias format used by the kernel and udev.
