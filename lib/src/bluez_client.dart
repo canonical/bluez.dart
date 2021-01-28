@@ -276,7 +276,7 @@ class BlueZDevice {
   int get rssi => _object.getInt16Property(_deviceInterfaceName, 'RSSI');
 
   /// Service advertisement data.
-  Map<BlueZUUID, List<int>> get serviceData {
+  Map<String, List<int>> get serviceData {
     var value = _object.getCachedProperty(_deviceInterfaceName, 'ServiceData');
     if (value == null) {
       return {};
@@ -295,8 +295,7 @@ class BlueZDevice {
     }
 
     return (value as DBusDict).children.map((key, value) => MapEntry(
-        BlueZUUID((key as DBusString).value),
-        processValue(value as DBusVariant)));
+        (key as DBusString).value, processValue(value as DBusVariant)));
   }
 
   /// True if service discovery has been resolved.
