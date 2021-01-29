@@ -26,4 +26,4 @@ jobs:
         run: dart format --output=none --set-exit-if-changed .
 
       - name: Analyze project source
-        run: dart analyze --fatal-infos
+        run: dart analyze --fatal-infos --fatal-warnings .
