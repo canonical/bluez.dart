@@ -262,7 +262,7 @@ class BlueZDevice {
     if (value == null) {
       return {};
     }
-    if (value.signature != DBusSignature('a{sv}')) {
+    if (value.signature != DBusSignature('a{qv}')) {
       return {};
     }
     List<int> processValue(DBusVariant value) {
