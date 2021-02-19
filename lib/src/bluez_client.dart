@@ -5,6 +5,30 @@ import 'package:dbus/dbus.dart';
 /// Types of Bluetooth address.
 enum BlueZAddressType { public, random }
 
+/// Types of writes to a GATT characteristic.
+enum BlueZGattCharacteristicWriteType { command, request, reliable }
+
+/// Defines how a GATT characteristic value can be used.
+enum BlueZGattCharacteristicFlag {
+  broadcast,
+  read,
+  writeWithoutResponse,
+  write,
+  notify,
+  indicate,
+  authenticatedSignedWrites,
+  extendedProperties,
+  reliableWrite,
+  writableAuxiliaries,
+  encryptRead,
+  encryptWrite,
+  encryptAuthenticatedRead,
+  encryptAuthenticatedWrite,
+  secureRead,
+  secureWrite,
+  authorize,
+}
+
 /// UUID used to describe services.
 class BlueZUUID {
   final String id;
@@ -167,6 +191,241 @@ class BlueZAdapter {
   Iterable<BlueZUUID> get uuids {
     var value = _object.getStringArrayProperty(_adapterInterfaceName, 'UUIDs');
     return value != null ? value.map((value) => BlueZUUID(value)) : [];
+  }
+}
+
+/// A GATT service running on a BlueZ device.
+class BlueZGattService {
+  final String _serviceInterfaceName = 'org.bluez.GattService1';
+
+  final BlueZClient _client;
+  final _BlueZObject _object;
+
+  BlueZGattService(this._client, this._object);
+
+  // TODO(robert-ancell): Includes
+
+  /// True if this is a primary service.
+  bool get primary =>
+      _object.getBooleanProperty(_serviceInterfaceName, 'Primary') ?? false;
+
+  /// Unique ID for this service.
+  BlueZUUID get uuid =>
+      BlueZUUID(_object.getStringProperty(_serviceInterfaceName, 'UUID') ?? '');
+
+  /// The Gatt characteristics provided by this service.
+  Iterable<BlueZGattCharacteristic> get gattCharacteristics =>
+      _client._getGattCharacteristics(_object.path);
+}
+
+/// A characteristic of a GATT service.
+class BlueZGattCharacteristic {
+  final String _gattCharacteristicInterfaceName =
+      'org.bluez.GattCharacteristic1';
+
+  final BlueZClient _client;
+  final _BlueZObject _object;
+
+  BlueZGattCharacteristic(this._client, this._object);
+
+  // TODO(robert-ancell): Includes
+
+  /// Unique ID for this characteristic.
+  BlueZUUID get uuid => BlueZUUID(
+      _object.getStringProperty(_gattCharacteristicInterfaceName, 'UUID') ??
+          '');
+
+  /// Cached value of this characteristic, updated when [readValue] is called.
+  List<int> get value =>
+      _object.getByteArrayProperty(_gattCharacteristicInterfaceName, 'Value') ??
+      [];
+
+  /// Defines how this characteristic value can be used.
+  Set<BlueZGattCharacteristicFlag> get flags {
+    var flags = <BlueZGattCharacteristicFlag>{};
+    var values = _object.getStringArrayProperty(
+            _gattCharacteristicInterfaceName, 'Flags') ??
+        [];
+    for (var value in values) {
+      switch (value) {
+        case 'broadcast':
+          flags.add(BlueZGattCharacteristicFlag.broadcast);
+          break;
+        case 'read':
+          flags.add(BlueZGattCharacteristicFlag.read);
+          break;
+        case 'write-without-response':
+          flags.add(BlueZGattCharacteristicFlag.writeWithoutResponse);
+          break;
+        case 'write':
+          flags.add(BlueZGattCharacteristicFlag.write);
+          break;
+        case 'notify':
+          flags.add(BlueZGattCharacteristicFlag.notify);
+          break;
+        case 'indicate':
+          flags.add(BlueZGattCharacteristicFlag.indicate);
+          break;
+        case 'authenticated-signed-writes':
+          flags.add(BlueZGattCharacteristicFlag.authenticatedSignedWrites);
+          break;
+        case 'extended-properties':
+          flags.add(BlueZGattCharacteristicFlag.extendedProperties);
+          break;
+        case 'reliable-write':
+          flags.add(BlueZGattCharacteristicFlag.reliableWrite);
+          break;
+        case 'writable-auxiliaries':
+          flags.add(BlueZGattCharacteristicFlag.writableAuxiliaries);
+          break;
+        case 'encrypt-read':
+          flags.add(BlueZGattCharacteristicFlag.encryptRead);
+          break;
+        case 'encrypt-write':
+          flags.add(BlueZGattCharacteristicFlag.encryptWrite);
+          break;
+        case 'encrypt-authenticated-read':
+          flags.add(BlueZGattCharacteristicFlag.encryptAuthenticatedRead);
+          break;
+        case 'encrypt-authenticated-write':
+          flags.add(BlueZGattCharacteristicFlag.encryptAuthenticatedWrite);
+          break;
+        case 'secure-read':
+          flags.add(BlueZGattCharacteristicFlag.secureRead);
+          break;
+        case 'secure-write':
+          flags.add(BlueZGattCharacteristicFlag.secureWrite);
+          break;
+        case 'authorize':
+          flags.add(BlueZGattCharacteristicFlag.authorize);
+          break;
+      }
+    }
+    return flags;
+  }
+
+  // TODO(robert-ancell): Functions that require fd manipulation - StartNotify(), StopNotify(), AcquireNotify(), NotifyAcquired, Notifying, AcquireWrite(), WriteAcquired
+
+  /// The Gatt descriptors provided by this characteristic.
+  Iterable<BlueZGattDescriptor> get gattDescriptors =>
+      _client._getGattDescriptors(_object.path);
+
+  /// Reads the value of the characteristic.
+  Future<Iterable<int>> readValue({int? offset}) async {
+    var options = <DBusValue, DBusValue>{};
+    if (offset != null) {
+      options[DBusString('offset')] = DBusUint16(offset);
+    }
+    var result = await _object.callMethod(
+        _gattCharacteristicInterfaceName,
+        'ReadValue',
+        [DBusDict(DBusSignature('s'), DBusSignature('v'), options)]);
+    var values = result.returnValues;
+    if (values.length != 1 || values[0].signature != DBusSignature('ay')) {
+      throw 'org.bluez.GattCharacteristic1.ReadValue returned invalid result: ${values}';
+    }
+    return (values[0] as DBusArray)
+        .children
+        .map((value) => (value as DBusByte).value)
+        .toList();
+  }
+
+  /// Writes [data] to the characteristic.
+  Future<void> writeValue(Iterable<int> data,
+      {int? offset,
+      BlueZGattCharacteristicWriteType? type,
+      bool? prepareAuthorize}) async {
+    var options = <DBusValue, DBusValue>{};
+    if (offset != null) {
+      options[DBusString('offset')] = DBusUint16(offset);
+    }
+    if (type != null) {
+      String typeName;
+      switch (type) {
+        case BlueZGattCharacteristicWriteType.command:
+          typeName = 'command';
+          break;
+        case BlueZGattCharacteristicWriteType.request:
+          typeName = 'request';
+          break;
+        case BlueZGattCharacteristicWriteType.reliable:
+          typeName = 'reliable';
+          break;
+      }
+      options[DBusString('type')] = DBusString(typeName);
+    }
+    if (prepareAuthorize != null) {
+      options[DBusString('prepare-authorize')] = DBusBoolean(prepareAuthorize);
+    }
+    var result = await _object
+        .callMethod(_gattCharacteristicInterfaceName, 'WriteValue', [
+      DBusArray(DBusSignature('y'), data.map((v) => DBusByte(v))),
+      DBusDict(DBusSignature('s'), DBusSignature('v'), options)
+    ]);
+    var values = result.returnValues;
+    if (values.isNotEmpty) {
+      throw 'org.bluez.GattCharacteristic1.WriteValue returned invalid result: ${values}';
+    }
+  }
+}
+
+/// A GATT characteristic descriptor.
+class BlueZGattDescriptor {
+  final String _gattDescriptorInterfaceName = 'org.bluez.GattDescriptor1';
+
+  final _BlueZObject _object;
+
+  BlueZGattDescriptor(this._object);
+
+  // TODO(robert-ancell): Includes
+
+  /// Cached value of this descriptor, updated when [readValue] is called.
+  List<int> get value =>
+      _object.getByteArrayProperty(_gattDescriptorInterfaceName, 'Value') ?? [];
+
+  /// Unique ID for this descriptor.
+  BlueZUUID get uuid => BlueZUUID(
+      _object.getStringProperty(_gattDescriptorInterfaceName, 'UUID') ?? '');
+
+  /// Reads the value of the descriptor.
+  Future<Iterable<int>> readValue({int? offset}) async {
+    var options = <DBusValue, DBusValue>{};
+    if (offset != null) {
+      options[DBusString('offset')] = DBusUint16(offset);
+    }
+    var result = await _object.callMethod(
+        _gattDescriptorInterfaceName,
+        'ReadValue',
+        [DBusDict(DBusSignature('s'), DBusSignature('v'), options)]);
+    var values = result.returnValues;
+    if (values.length != 1 || values[0].signature != DBusSignature('ay')) {
+      throw 'org.bluez.GattDescriptor1.ReadValue returned invalid result: ${values}';
+    }
+    return (values[0] as DBusArray)
+        .children
+        .map((value) => (value as DBusByte).value)
+        .toList();
+  }
+
+  /// Writes [data] to the descriptor.
+  Future<void> writeValue(Iterable<int> data,
+      {int? offset, bool? prepareAuthorize}) async {
+    var options = <DBusValue, DBusValue>{};
+    if (offset != null) {
+      options[DBusString('offset')] = DBusUint16(offset);
+    }
+    if (prepareAuthorize != null) {
+      options[DBusString('prepare-authorize')] = DBusBoolean(prepareAuthorize);
+    }
+    var result =
+        await _object.callMethod(_gattDescriptorInterfaceName, 'WriteValue', [
+      DBusArray(DBusSignature('y'), data.map((v) => DBusByte(v))),
+      DBusDict(DBusSignature('s'), DBusSignature('v'), options)
+    ]);
+    var values = result.returnValues;
+    if (values.isNotEmpty) {
+      throw 'org.bluez.GattDescriptor1.WriteValue returned invalid result: ${values}';
+    }
   }
 }
 
@@ -369,6 +628,10 @@ class BlueZDevice {
   /// Sets if the device can wake the host from system suspend.
   set wakeAllowed(bool value) => _object.setProperty(
       _deviceInterfaceName, 'WakeAllowed', DBusBoolean(value));
+
+  /// The Gatt services provided by this device.
+  Iterable<BlueZGattService> get gattServices =>
+      _client._getGattServices(_object.path);
 }
 
 class _BlueZInterface {
@@ -430,6 +693,21 @@ class _BlueZObject extends DBusRemoteObject {
       return null;
     }
     return (value as DBusBoolean).value;
+  }
+
+  /// Gets a cached byte array property, or returns null if not present or not the correct type.
+  List<int>? getByteArrayProperty(String interface, String name) {
+    var value = getCachedProperty(interface, name);
+    if (value == null) {
+      return null;
+    }
+    if (value.signature != DBusSignature('ay')) {
+      return null;
+    }
+    return (value as DBusArray)
+        .children
+        .map((e) => (e as DBusByte).value)
+        .toList();
   }
 
   /// Gets a cached signed 16 bit integer property, or returns null if not present or not the correct type.
@@ -656,5 +934,49 @@ class BlueZClient {
 
   bool _isDevice(_BlueZObject object) {
     return object.interfaces.containsKey('org.bluez.Device1');
+  }
+
+  Iterable<BlueZGattService> _getGattServices(DBusObjectPath parentPath) {
+    var services = <BlueZGattService>[];
+    for (var object in _objects.values) {
+      if (object.path.isInNamespace(parentPath) && _isGattService(object)) {
+        services.add(BlueZGattService(this, object));
+      }
+    }
+    return services;
+  }
+
+  bool _isGattService(_BlueZObject object) {
+    return object.interfaces.containsKey('org.bluez.GattService1');
+  }
+
+  Iterable<BlueZGattCharacteristic> _getGattCharacteristics(
+      DBusObjectPath parentPath) {
+    var characteristics = <BlueZGattCharacteristic>[];
+    for (var object in _objects.values) {
+      if (object.path.isInNamespace(parentPath) &&
+          _isGattCharacteristic(object)) {
+        characteristics.add(BlueZGattCharacteristic(this, object));
+      }
+    }
+    return characteristics;
+  }
+
+  bool _isGattCharacteristic(_BlueZObject object) {
+    return object.interfaces.containsKey('org.bluez.GattCharacteristic1');
+  }
+
+  Iterable<BlueZGattDescriptor> _getGattDescriptors(DBusObjectPath parentPath) {
+    var descriptors = <BlueZGattDescriptor>[];
+    for (var object in _objects.values) {
+      if (object.path.isInNamespace(parentPath) && _isGattDescriptor(object)) {
+        descriptors.add(BlueZGattDescriptor(object));
+      }
+    }
+    return descriptors;
+  }
+
+  bool _isGattDescriptor(_BlueZObject object) {
+    return object.interfaces.containsKey('org.bluez.GattDescriptor1');
   }
 }
