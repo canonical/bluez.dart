@@ -1,5 +1,5 @@
 name: bluez
-version: 0.0.0-dev.3
+version: 0.1.0
 
 description:
   Provides a client to connect to BlueZ - the Linux Bluetooth stack.
