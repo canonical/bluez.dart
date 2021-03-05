@@ -811,7 +811,8 @@ class BlueZClient {
       _deviceRemovedStreamController.stream;
 
   /// The bus this client is connected to.
-  final DBusClient _systemBus;
+  final DBusClient _bus;
+  final bool _closeBus;
 
   /// The root D-Bus BlueZ object.
   DBusRemoteObject? _root;
@@ -831,8 +832,10 @@ class BlueZClient {
   final _deviceRemovedStreamController =
       StreamController<BlueZDevice>.broadcast();
 
-  /// Creates a new BlueZ client connected to the system D-Bus.
-  BlueZClient(this._systemBus);
+  /// Creates a new BlueZ client. If [bus] is provided connect to the given D-Bus server.
+  BlueZClient({DBusClient? bus})
+      : _bus = bus ?? DBusClient.system(),
+        _closeBus = bus == null;
 
   /// Connects to the BlueZ daemon.
   /// Must be called before accessing methods and properties.
@@ -842,7 +845,7 @@ class BlueZClient {
       return;
     }
 
-    _root = DBusRemoteObject(_systemBus, 'org.bluez', DBusObjectPath('/'));
+    _root = DBusRemoteObject(_bus, 'org.bluez', DBusObjectPath('/'));
 
     // Subscribe to changes
     var signals = _root!.subscribeObjectManagerSignals();
@@ -853,7 +856,7 @@ class BlueZClient {
           object.updateInterfaces(signal.interfacesAndProperties);
         } else {
           object = _BlueZObject(
-              _systemBus, signal.changedPath, signal.interfacesAndProperties);
+              _bus, signal.changedPath, signal.interfacesAndProperties);
           _objects[signal.changedPath] = object;
           if (_isAdapter(object)) {
             _adapterAddedStreamController.add(BlueZAdapter(object));
@@ -884,7 +887,7 @@ class BlueZClient {
     var objects = await _root!.getManagedObjects();
     objects.forEach((objectPath, interfacesAndProperties) {
       _objects[objectPath] =
-          _BlueZObject(_systemBus, objectPath, interfacesAndProperties);
+          _BlueZObject(_bus, objectPath, interfacesAndProperties);
     });
   }
 
@@ -913,10 +916,13 @@ class BlueZClient {
   }
 
   /// Terminates all active connections. If a client remains unclosed, the Dart process may not terminate.
-  void close() {
+  Future<void> close() async {
     if (_objectManagerSubscription != null) {
-      _objectManagerSubscription?.cancel();
+      await _objectManagerSubscription?.cancel();
       _objectManagerSubscription = null;
+    }
+    if (_closeBus) {
+      await _bus.close();
     }
   }
 

@@ -3,19 +3,16 @@
 Provides a client to connect to [BlueZ](http://www.bluez.org/) - the Linux Bluetooth stack.
 
 ```dart
-import 'package:dbus/dbus.dart';
 import 'package:bluez/bluez.dart';
 
-var systemBus = DBusClient.system();
-var client = BlueZClient(systemBus);
+var client = BlueZClient();
 await client.connect();
 
 for (var device in client.devices) {
   print('Device ${device.address} ${device.alias}');
 }
 
-client.close();
-await systemBus.close();
+await client.close();
 ```
 
 ## Contributing to bluez.dart
