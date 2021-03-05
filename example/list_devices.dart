@@ -16,5 +16,6 @@ void main() async {
     print('Device ${device.address} ${device.alias}');
   }
 
+  client.close();
   await systemBus.close();
 }
