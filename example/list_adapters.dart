@@ -1,14 +1,12 @@
-import 'package:dbus/dbus.dart';
 import 'package:bluez/bluez.dart';
 
 void main() async {
-  var systemBus = DBusClient.system();
-  var client = BlueZClient(systemBus);
+  var client = BlueZClient();
   await client.connect();
 
   if (client.adapters.isEmpty) {
     print('No Bluetooth adapters found');
-    await systemBus.close();
+    await client.close();
     return;
   }
 
@@ -16,6 +14,5 @@ void main() async {
     print('Controller ${adapter.address} ${adapter.alias}');
   }
 
-  client.close();
-  await systemBus.close();
+  await client.close();
 }
