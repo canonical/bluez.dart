@@ -36,7 +36,7 @@ class BlueZUUID {
   const BlueZUUID(this.id);
 
   @override
-  String toString() => "BlueZUUID('${id}')";
+  String toString() => "BlueZUUID('$id')";
 }
 
 /// Bluetooth manufacturer Id.
@@ -46,7 +46,7 @@ class BlueZManufacturerId {
   const BlueZManufacturerId(this.id);
 
   @override
-  String toString() => "BlueZManufacturerId('${id}')";
+  String toString() => "BlueZManufacturerId('$id')";
 }
 
 final _bluezAddressTypeMap = <String, BlueZAddressType>{
@@ -66,7 +66,7 @@ class BlueZAdapter {
   Stream<List<String>> get propertiesChangedStream {
     var interface = _object.interfaces[_adapterInterfaceName];
     if (interface == null) {
-      throw 'BlueZ adapter missing ${_adapterInterfaceName} interface';
+      throw 'BlueZ adapter missing $_adapterInterfaceName interface';
     }
     return interface.propertiesChangedStreamController.stream;
   }
@@ -77,7 +77,7 @@ class BlueZAdapter {
         .callMethod(_adapterInterfaceName, 'GetDiscoveryFilters', []);
     var values = result.returnValues;
     if (values.length != 1 || values[0].signature != DBusSignature('as')) {
-      throw 'GetDiscoveryFilters returned invalid result: ${values}';
+      throw 'GetDiscoveryFilters returned invalid result: $values';
     }
     return (values[0] as DBusArray)
         .children
@@ -322,7 +322,7 @@ class BlueZGattCharacteristic {
         [DBusDict(DBusSignature('s'), DBusSignature('v'), options)]);
     var values = result.returnValues;
     if (values.length != 1 || values[0].signature != DBusSignature('ay')) {
-      throw 'org.bluez.GattCharacteristic1.ReadValue returned invalid result: ${values}';
+      throw 'org.bluez.GattCharacteristic1.ReadValue returned invalid result: $values';
     }
     return (values[0] as DBusArray)
         .children
@@ -364,7 +364,7 @@ class BlueZGattCharacteristic {
     ]);
     var values = result.returnValues;
     if (values.isNotEmpty) {
-      throw 'org.bluez.GattCharacteristic1.WriteValue returned invalid result: ${values}';
+      throw 'org.bluez.GattCharacteristic1.WriteValue returned invalid result: $values';
     }
   }
 }
@@ -399,7 +399,7 @@ class BlueZGattDescriptor {
         [DBusDict(DBusSignature('s'), DBusSignature('v'), options)]);
     var values = result.returnValues;
     if (values.length != 1 || values[0].signature != DBusSignature('ay')) {
-      throw 'org.bluez.GattDescriptor1.ReadValue returned invalid result: ${values}';
+      throw 'org.bluez.GattDescriptor1.ReadValue returned invalid result: $values';
     }
     return (values[0] as DBusArray)
         .children
@@ -424,7 +424,7 @@ class BlueZGattDescriptor {
     ]);
     var values = result.returnValues;
     if (values.isNotEmpty) {
-      throw 'org.bluez.GattDescriptor1.WriteValue returned invalid result: ${values}';
+      throw 'org.bluez.GattDescriptor1.WriteValue returned invalid result: $values';
     }
   }
 }
@@ -442,7 +442,7 @@ class BlueZDevice {
   Stream<List<String>> get propertiesChangedStream {
     var interface = _object.interfaces[_deviceInterfaceName];
     if (interface == null) {
-      throw 'BlueZ device missing ${_deviceInterfaceName} interface';
+      throw 'BlueZ device missing $_deviceInterfaceName interface';
     }
     return interface.propertiesChangedStreamController.stream;
   }

@@ -26,10 +26,10 @@ void main() async {
         try {
           characteristicValue = '${await characteristic.readValue()}';
         } catch (e) {
-          characteristicValue = '<read failed: ${e}>';
+          characteristicValue = '<read failed: $e>';
         }
         print(
-            '    Characteristic ${characteristic.uuid.id} = ${characteristicValue}');
+            '    Characteristic ${characteristic.uuid.id} = $characteristicValue');
         for (var descriptor in characteristic.gattDescriptors) {
           String descriptorValue;
           try {
@@ -37,7 +37,7 @@ void main() async {
           } catch (e) {
             descriptorValue = '<read failed: %{e}>';
           }
-          print('      Descriptor ${descriptor.uuid.id} = ${descriptorValue}');
+          print('      Descriptor ${descriptor.uuid.id} = $descriptorValue');
         }
       }
     }
