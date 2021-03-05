@@ -25,5 +25,6 @@ void main() async {
 
   await adapter.stopDiscovery();
 
+  client.close();
   await systemBus.close();
 }

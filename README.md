@@ -10,11 +10,11 @@ var systemBus = DBusClient.system();
 var client = BlueZClient(systemBus);
 await client.connect();
 
-print('Devices:');
 for (var device in client.devices) {
-  print('  ${device.name}');
+  print('Device ${device.address} ${device.alias}');
 }
 
+client.close();
 await systemBus.close();
 ```
 

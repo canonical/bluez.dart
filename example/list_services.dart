@@ -43,5 +43,6 @@ void main() async {
     }
   }
 
+  client.close();
   await systemBus.close();
 }

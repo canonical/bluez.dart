@@ -16,5 +16,6 @@ void main() async {
     print('Controller ${adapter.address} ${adapter.alias}');
   }
 
+  client.close();
   await systemBus.close();
 }
