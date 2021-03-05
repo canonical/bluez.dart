@@ -815,7 +815,7 @@ class BlueZClient {
   final bool _closeBus;
 
   /// The root D-Bus BlueZ object.
-  DBusRemoteObject? _root;
+  late final DBusRemoteObject _root;
 
   // Objects exported on the bus.
   final _objects = <DBusObjectPath, _BlueZObject>{};
@@ -835,20 +835,20 @@ class BlueZClient {
   /// Creates a new BlueZ client. If [bus] is provided connect to the given D-Bus server.
   BlueZClient({DBusClient? bus})
       : _bus = bus ?? DBusClient.system(),
-        _closeBus = bus == null;
+        _closeBus = bus == null {
+    _root = DBusRemoteObject(_bus, 'org.bluez', DBusObjectPath('/'));
+  }
 
   /// Connects to the BlueZ daemon.
   /// Must be called before accessing methods and properties.
   Future<void> connect() async {
     // Already connected
-    if (_root != null) {
+    if (_objectManagerSubscription != null) {
       return;
     }
 
-    _root = DBusRemoteObject(_bus, 'org.bluez', DBusObjectPath('/'));
-
     // Subscribe to changes
-    var signals = _root!.subscribeObjectManagerSignals();
+    var signals = _root.subscribeObjectManagerSignals();
     _objectManagerSubscription = signals.listen((signal) {
       if (signal is DBusObjectManagerInterfacesAddedSignal) {
         var object = _objects[signal.changedPath];
@@ -884,7 +884,7 @@ class BlueZClient {
     });
 
     // Find all the objects exported.
-    var objects = await _root!.getManagedObjects();
+    var objects = await _root.getManagedObjects();
     objects.forEach((objectPath, interfacesAndProperties) {
       _objects[objectPath] =
           _BlueZObject(_bus, objectPath, interfacesAndProperties);
