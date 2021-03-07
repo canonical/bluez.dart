@@ -306,6 +306,16 @@ class BlueZGattCharacteristic {
 
   // TODO(robert-ancell): Functions that require fd manipulation - StartNotify(), StopNotify(), AcquireNotify(), NotifyAcquired, Notifying, AcquireWrite(), WriteAcquired
 
+  Future<void> startNotify() async {
+    await _object
+        .callMethod(_gattCharacteristicInterfaceName, 'StartNotify', []);
+  }
+
+  Future<void> stopNotify() async {
+    await _object
+        .callMethod(_gattCharacteristicInterfaceName, 'StopNotify', []);
+  }
+
   /// The Gatt descriptors provided by this characteristic.
   Iterable<BlueZGattDescriptor> get gattDescriptors =>
       _client._getGattDescriptors(_object.path);
