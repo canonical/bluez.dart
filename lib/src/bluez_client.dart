@@ -228,6 +228,11 @@ class BlueZGattCharacteristic {
 
   BlueZGattCharacteristic(this._client, this._object);
 
+  Stream<List<String>> get propertiesChangedStream {
+    return _object.interfaces[_gattCharacteristicInterfaceName]!
+        .propertiesChangedStreamController.stream;
+  }
+
   // TODO(robert-ancell): Includes
 
   /// Unique ID for this characteristic.
