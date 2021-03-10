@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+* Make the DBusClient parameter optional.
+* Add back default example for pub.dev to show.
+* Fix examples not correctly closing the BlueZClient.
+* Code tidy ups to pass dart analyze in 1.12 final release.
+
 ## 0.1.1
 
 * Add initial GATT client support.
