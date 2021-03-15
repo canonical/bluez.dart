@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4
+
+* Bump dbus dependency to avoid another signal subscription bug.
+
 ## 0.1.3
 
 * Bump dbus dependency to avoid a signal subscription bug.
