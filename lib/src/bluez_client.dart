@@ -309,16 +309,22 @@ class BlueZGattCharacteristic {
     return flags;
   }
 
-  // TODO(robert-ancell): Functions that require fd manipulation - StartNotify(), StopNotify(), AcquireNotify(), NotifyAcquired, Notifying, AcquireWrite(), WriteAcquired
+  // TODO(robert-ancell): Functions that require fd manipulation - AcquireNotify(), NotifyAcquired, Notifying, AcquireWrite(), WriteAcquired
 
   Future<void> startNotify() async {
-    await _object
+    final response = await _object
         .callMethod(_gattCharacteristicInterfaceName, 'StartNotify', []);
+    if (response is DBusMethodErrorResponse) {
+      throw 'org.bluez.GattCharacteristic1.StartNotify returned error: ${response.errorName}';
+    }
   }
 
   Future<void> stopNotify() async {
-    await _object
+    final response = await _object
         .callMethod(_gattCharacteristicInterfaceName, 'StopNotify', []);
+    if (response is DBusMethodErrorResponse) {
+      throw 'org.bluez.GattCharacteristic1.StopNotify returned error: ${response.errorName}';
+    }
   }
 
   /// The Gatt descriptors provided by this characteristic.
