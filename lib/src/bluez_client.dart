@@ -309,7 +309,7 @@ class BlueZGattCharacteristic {
     return flags;
   }
 
-  // TODO(robert-ancell): Functions that require fd manipulation - AcquireNotify(), NotifyAcquired, Notifying, AcquireWrite(), WriteAcquired
+  // TODO(robert-ancell): Functions that require fd manipulation - AcquireNotify(), NotifyAcquired, AcquireWrite(), WriteAcquired
 
   Future<void> startNotify() async {
     final response = await _object
@@ -326,6 +326,11 @@ class BlueZGattCharacteristic {
       throw 'org.bluez.GattCharacteristic1.StopNotify returned error: ${response.errorName}';
     }
   }
+
+  bool get notifying =>
+      _object.getBooleanProperty(
+          _gattCharacteristicInterfaceName, 'Notifying') ??
+      false;
 
   /// The Gatt descriptors provided by this characteristic.
   Iterable<BlueZGattDescriptor> get gattDescriptors =>
