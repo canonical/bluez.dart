@@ -37,6 +37,12 @@ class BlueZUUID {
 
   @override
   String toString() => "BlueZUUID('$id')";
+
+  @override
+  bool operator ==(other) => other is BlueZUUID && other.id == id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 /// Bluetooth manufacturer Id.
@@ -47,6 +53,12 @@ class BlueZManufacturerId {
 
   @override
   String toString() => "BlueZManufacturerId('$id')";
+
+  @override
+  bool operator ==(other) => other is BlueZManufacturerId && other.id == id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 final _bluezAddressTypeMap = <String, BlueZAddressType>{
