@@ -15,7 +15,7 @@ void main() async {
   for (var device in client.devices) {
     print('  ${device.name}');
   }
-  client.deviceAddedStream.listen((device) => print('  ${device.name}'));
+  client.deviceAdded.listen((device) => print('  ${device.name}'));
 
   await adapter.startDiscovery();
 

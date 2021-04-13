@@ -75,7 +75,7 @@ class BlueZAdapter {
   BlueZAdapter(this._object);
 
   /// Stream of property names as their values change.
-  Stream<List<String>> get propertiesChangedStream {
+  Stream<List<String>> get propertiesChanged {
     var interface = _object.interfaces[_adapterInterfaceName];
     if (interface == null) {
       throw 'BlueZ adapter missing $_adapterInterfaceName interface';
@@ -451,7 +451,7 @@ class BlueZDevice {
   BlueZDevice(this._client, this._object);
 
   /// Stream of property names as their values change.
-  Stream<List<String>> get propertiesChangedStream {
+  Stream<List<String>> get propertiesChanged {
     var interface = _object.interfaces[_deviceInterfaceName];
     if (interface == null) {
       throw 'BlueZ device missing $_deviceInterfaceName interface';
@@ -651,7 +651,7 @@ class _BlueZInterface {
   final propertiesChangedStreamController =
       StreamController<List<String>>.broadcast();
 
-  Stream<List<String>> get propertiesChangedStream =>
+  Stream<List<String>> get propertiesChanged =>
       propertiesChangedStreamController.stream;
 
   _BlueZInterface(this.properties);
@@ -807,19 +807,17 @@ class _BlueZObject extends DBusRemoteObject {
 /// A client that connects to BlueZ.
 class BlueZClient {
   /// Stream of adapters as they are added.
-  Stream<BlueZAdapter> get adapterAddedStream =>
-      _adapterAddedStreamController.stream;
+  Stream<BlueZAdapter> get adapterAdded => _adapterAddedStreamController.stream;
 
   /// Stream of adapters as they are removed.
-  Stream<BlueZAdapter> get adapterRemovedStream =>
+  Stream<BlueZAdapter> get adapterRemoved =>
       _adapterRemovedStreamController.stream;
 
   /// Stream of devices as they are added.
-  Stream<BlueZDevice> get deviceAddedStream =>
-      _deviceAddedStreamController.stream;
+  Stream<BlueZDevice> get deviceAdded => _deviceAddedStreamController.stream;
 
   /// Stream of devices as they are removed.
-  Stream<BlueZDevice> get deviceRemovedStream =>
+  Stream<BlueZDevice> get deviceRemoved =>
       _deviceRemovedStreamController.stream;
 
   /// The bus this client is connected to.
@@ -904,7 +902,7 @@ class BlueZClient {
   }
 
   /// The adapters present on this system.
-  /// Use [adapterAddedStream] and [adapterRemovedStream] to detect when this list changes.
+  /// Use [adapterAdded] and [adapterRemoved] to detect when this list changes.
   List<BlueZAdapter> get adapters {
     var adapters = <BlueZAdapter>[];
     for (var object in _objects.values) {
@@ -916,7 +914,7 @@ class BlueZClient {
   }
 
   /// The devices on this system.
-  /// Use [deviceAddedStream] and [deviceRemovedStream] to detect when this list changes.
+  /// Use [deviceAdded] and [deviceRemoved] to detect when this list changes.
   List<BlueZDevice> get devices {
     var devices = <BlueZDevice>[];
     for (var object in _objects.values) {
