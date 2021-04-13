@@ -662,12 +662,6 @@ class _BlueZObject extends DBusRemoteObject {
     });
   }
 
-  void removeInterfaces(List<String> interfaceNames) {
-    for (var interfaceName in interfaceNames) {
-      interfaces.remove(interfaceName);
-    }
-  }
-
   void updateProperties(
       String interfaceName, Map<String, DBusValue> changedProperties) {
     var interface = interfaces[interfaceName];
@@ -866,12 +860,18 @@ class BlueZClient {
       } else if (signal is DBusObjectManagerInterfacesRemovedSignal) {
         var object = _objects[signal.changedPath];
         if (object != null) {
-          object.removeInterfaces(signal.interfaces);
-          if (_isAdapter(object)) {
+          if (signal.interfaces.contains('org.bluez.Adapter1')) {
             _adapterRemovedStreamController.add(BlueZAdapter(object));
-          } else if (_isDevice(object)) {
+          } else if (signal.interfaces.contains('org.bluez.Device1')) {
             _deviceRemovedStreamController.add(BlueZDevice(this, object));
           }
+          // Note that if not all the interfaces were removed then the object still exists.
+          // But in the case of BlueZ the only objects we care about only drop interfaces
+          // when they are completely removed.
+          // Since we don't take a copy of the existing object we don't remove the interfaces
+          // as the BlueZClient consumer will want the last values when they read the object
+          // from the stream.
+          _objects.remove(object);
         }
       } else if (signal is DBusPropertiesChangedSignal) {
         var object = _objects[signal.path];
