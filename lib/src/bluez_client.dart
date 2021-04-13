@@ -815,7 +815,7 @@ class BlueZClient {
   final bool _closeBus;
 
   /// The root D-Bus BlueZ object.
-  late final DBusRemoteObject _root;
+  late final DBusRemoteObjectManager _root;
 
   // Objects exported on the bus.
   final _objects = <DBusObjectPath, _BlueZObject>{};
@@ -836,7 +836,7 @@ class BlueZClient {
   BlueZClient({DBusClient? bus})
       : _bus = bus ?? DBusClient.system(),
         _closeBus = bus == null {
-    _root = DBusRemoteObject(_bus, 'org.bluez', DBusObjectPath('/'));
+    _root = DBusRemoteObjectManager(_bus, 'org.bluez', DBusObjectPath('/'));
   }
 
   /// Connects to the BlueZ daemon.
@@ -848,8 +848,7 @@ class BlueZClient {
     }
 
     // Subscribe to changes
-    var signals = _root.subscribeObjectManagerSignals();
-    _objectManagerSubscription = signals.listen((signal) {
+    _objectManagerSubscription = _root.signals.listen((signal) {
       if (signal is DBusObjectManagerInterfacesAddedSignal) {
         var object = _objects[signal.changedPath];
         if (object != null) {
