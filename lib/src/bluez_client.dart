@@ -544,11 +544,11 @@ class BlueZDevice {
     if (value.signature != DBusSignature('a{qv}')) {
       return {};
     }
-    List<int> processValue(DBusVariant value) {
-      if (value.value.signature != DBusSignature('ay')) {
+    List<int> processValue(DBusValue value) {
+      if (value.signature != DBusSignature('ay')) {
         return [];
       }
-      return (value.value as DBusArray)
+      return (value as DBusArray)
           .children
           .map((value) => (value as DBusByte).value)
           .toList();
@@ -556,7 +556,7 @@ class BlueZDevice {
 
     return (value as DBusDict).children.map((key, value) => MapEntry(
         BlueZManufacturerId((key as DBusUint16).value),
-        processValue(value as DBusVariant)));
+        processValue((value as DBusVariant).value)));
   }
 
   /// Remote Device ID information in modalias format used by the kernel and udev.
@@ -583,11 +583,11 @@ class BlueZDevice {
     if (value.signature != DBusSignature('a{sv}')) {
       return {};
     }
-    List<int> processValue(DBusVariant value) {
-      if (value.value.signature != DBusSignature('ay')) {
+    List<int> processValue(DBusValue value) {
+      if (value.signature != DBusSignature('ay')) {
         return [];
       }
-      return (value.value as DBusArray)
+      return (value as DBusArray)
           .children
           .map((value) => (value as DBusByte).value)
           .toList();
@@ -595,7 +595,7 @@ class BlueZDevice {
 
     return (value as DBusDict).children.map((key, value) => MapEntry(
         BlueZUUID.fromString((key as DBusString).value),
-        processValue(value as DBusVariant)));
+        processValue((value as DBusVariant).value)));
   }
 
   /// True if service discovery has been resolved.
