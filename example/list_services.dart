@@ -19,7 +19,7 @@ void main() async {
     await device.connect();
     for (var service in device.gattServices) {
       print('  Service ${service.uuid}');
-      for (var characteristic in service.gattCharacteristics) {
+      for (var characteristic in service.characteristics) {
         String characteristicValue;
         try {
           characteristicValue = '${await characteristic.readValue()}';
@@ -28,7 +28,7 @@ void main() async {
         }
         print(
             '    Characteristic ${characteristic.uuid} = $characteristicValue');
-        for (var descriptor in characteristic.gattDescriptors) {
+        for (var descriptor in characteristic.descriptors) {
           String descriptorValue;
           try {
             descriptorValue = '${await descriptor.readValue()}';

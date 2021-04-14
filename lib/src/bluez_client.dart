@@ -214,7 +214,7 @@ class BlueZGattService {
       _object.getStringProperty(_serviceInterfaceName, 'UUID') ?? '');
 
   /// The Gatt characteristics provided by this service.
-  List<BlueZGattCharacteristic> get gattCharacteristics =>
+  List<BlueZGattCharacteristic> get characteristics =>
       _client._getGattCharacteristics(_object.path);
 }
 
@@ -307,7 +307,7 @@ class BlueZGattCharacteristic {
   // TODO(robert-ancell): Functions that require fd manipulation - StartNotify(), StopNotify(), AcquireNotify(), NotifyAcquired, Notifying, AcquireWrite(), WriteAcquired
 
   /// The Gatt descriptors provided by this characteristic.
-  List<BlueZGattDescriptor> get gattDescriptors =>
+  List<BlueZGattDescriptor> get descriptors =>
       _client._getGattDescriptors(_object.path);
 
   /// Reads the value of the characteristic.
