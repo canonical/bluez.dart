@@ -18,7 +18,7 @@ void main() async {
     print('Device ${device.alias}');
     await device.connect();
     for (var service in device.gattServices) {
-      print('  Service ${service.uuid.id}');
+      print('  Service ${service.uuid}');
       for (var characteristic in service.gattCharacteristics) {
         String characteristicValue;
         try {
@@ -27,7 +27,7 @@ void main() async {
           characteristicValue = '<read failed: $e>';
         }
         print(
-            '    Characteristic ${characteristic.uuid.id} = $characteristicValue');
+            '    Characteristic ${characteristic.uuid} = $characteristicValue');
         for (var descriptor in characteristic.gattDescriptors) {
           String descriptorValue;
           try {
@@ -35,7 +35,7 @@ void main() async {
           } catch (e) {
             descriptorValue = '<read failed: %{e}>';
           }
-          print('      Descriptor ${descriptor.uuid.id} = $descriptorValue');
+          print('      Descriptor ${descriptor.uuid} = $descriptorValue');
         }
       }
     }

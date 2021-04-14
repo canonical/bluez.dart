@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:dbus/dbus.dart';
 
+import 'bluez_uuid.dart';
+
 /// Types of Bluetooth address.
 enum BlueZAddressType { public, random }
 
@@ -27,22 +29,6 @@ enum BlueZGattCharacteristicFlag {
   secureRead,
   secureWrite,
   authorize,
-}
-
-/// UUID used to describe services.
-class BlueZUUID {
-  final String id;
-
-  const BlueZUUID(this.id);
-
-  @override
-  String toString() => "BlueZUUID('$id')";
-
-  @override
-  bool operator ==(other) => other is BlueZUUID && other.id == id;
-
-  @override
-  int get hashCode => id.hashCode;
 }
 
 /// Bluetooth manufacturer Id.
@@ -202,7 +188,9 @@ class BlueZAdapter {
   /// List of 128-bit UUIDs that represents the available local services.
   List<BlueZUUID> get uuids {
     var value = _object.getStringArrayProperty(_adapterInterfaceName, 'UUIDs');
-    return value != null ? value.map((value) => BlueZUUID(value)).toList() : [];
+    return value != null
+        ? value.map((value) => BlueZUUID.fromString(value)).toList()
+        : [];
   }
 }
 
@@ -222,8 +210,8 @@ class BlueZGattService {
       _object.getBooleanProperty(_serviceInterfaceName, 'Primary') ?? false;
 
   /// Unique ID for this service.
-  BlueZUUID get uuid =>
-      BlueZUUID(_object.getStringProperty(_serviceInterfaceName, 'UUID') ?? '');
+  BlueZUUID get uuid => BlueZUUID.fromString(
+      _object.getStringProperty(_serviceInterfaceName, 'UUID') ?? '');
 
   /// The Gatt characteristics provided by this service.
   List<BlueZGattCharacteristic> get gattCharacteristics =>
@@ -243,7 +231,7 @@ class BlueZGattCharacteristic {
   // TODO(robert-ancell): Includes
 
   /// Unique ID for this characteristic.
-  BlueZUUID get uuid => BlueZUUID(
+  BlueZUUID get uuid => BlueZUUID.fromString(
       _object.getStringProperty(_gattCharacteristicInterfaceName, 'UUID') ??
           '');
 
@@ -396,7 +384,7 @@ class BlueZGattDescriptor {
       _object.getByteArrayProperty(_gattDescriptorInterfaceName, 'Value') ?? [];
 
   /// Unique ID for this descriptor.
-  BlueZUUID get uuid => BlueZUUID(
+  BlueZUUID get uuid => BlueZUUID.fromString(
       _object.getStringProperty(_gattDescriptorInterfaceName, 'UUID') ?? '');
 
   /// Reads the value of the descriptor.
@@ -472,13 +460,13 @@ class BlueZDevice {
   /// Connects to the service with [uuid].
   Future<void> connectProfile(BlueZUUID uuid) async {
     await _object.callMethod(
-        _deviceInterfaceName, 'ConnectProfile', [DBusString(uuid.id)]);
+        _deviceInterfaceName, 'ConnectProfile', [DBusString(uuid.toString())]);
   }
 
   /// Disconnects the service with [uuid].
   Future<void> disconnectProfile(BlueZUUID uuid) async {
-    await _object.callMethod(
-        _deviceInterfaceName, 'DisconnectProfile', [DBusString(uuid.id)]);
+    await _object.callMethod(_deviceInterfaceName, 'DisconnectProfile',
+        [DBusString(uuid.toString())]);
   }
 
   /// Pair with this device.
@@ -606,7 +594,7 @@ class BlueZDevice {
     }
 
     return (value as DBusDict).children.map((key, value) => MapEntry(
-        BlueZUUID((key as DBusString).value),
+        BlueZUUID.fromString((key as DBusString).value),
         processValue(value as DBusVariant)));
   }
 
@@ -630,7 +618,9 @@ class BlueZDevice {
   /// UUIDs that indicate the available remote services.
   List<BlueZUUID> get uuids {
     var value = _object.getStringArrayProperty(_deviceInterfaceName, 'UUIDs');
-    return value != null ? value.map((value) => BlueZUUID(value)).toList() : [];
+    return value != null
+        ? value.map((value) => BlueZUUID.fromString(value)).toList()
+        : [];
   }
 
   /// True if the device can wake the host from system suspend.
