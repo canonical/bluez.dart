@@ -112,7 +112,24 @@ class BlueZUUID {
   }
 
   @override
-  bool operator ==(other) => other is BlueZUUID && other.value == value;
+  bool operator ==(other) =>
+      other is BlueZUUID &&
+      other.value[0] == value[0] &&
+      other.value[1] == value[1] &&
+      other.value[2] == value[2] &&
+      other.value[3] == value[3] &&
+      other.value[4] == value[4] &&
+      other.value[5] == value[5] &&
+      other.value[6] == value[6] &&
+      other.value[7] == value[7] &&
+      other.value[8] == value[8] &&
+      other.value[9] == value[9] &&
+      other.value[10] == value[10] &&
+      other.value[11] == value[11] &&
+      other.value[12] == value[12] &&
+      other.value[13] == value[13] &&
+      other.value[14] == value[14] &&
+      other.value[15] == value[15];
 
   @override
   int get hashCode => value.hashCode;
