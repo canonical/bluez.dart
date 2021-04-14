@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0
+
+* Update to dbus 0.4.
+* Change names of signal streams to match dbus.dart conventions.
+* Refactor BlueZUUID.
+* Change outputs from Iterable to List so can be easily indexed.
+* Drop GATT prefix on variables inside GATT objects.
+* Fix properties being removed when a D-Bus object is removed.
+* Add regression tests.
+
 ## 0.1.4
 
 * Bump dbus dependency to avoid another signal subscription bug.
