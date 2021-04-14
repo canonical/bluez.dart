@@ -200,9 +200,9 @@ class BlueZAdapter {
       _object.getStringArrayProperty(_adapterInterfaceName, 'Roles') ?? [];
 
   /// List of 128-bit UUIDs that represents the available local services.
-  Iterable<BlueZUUID> get uuids {
+  List<BlueZUUID> get uuids {
     var value = _object.getStringArrayProperty(_adapterInterfaceName, 'UUIDs');
-    return value != null ? value.map((value) => BlueZUUID(value)) : [];
+    return value != null ? value.map((value) => BlueZUUID(value)).toList() : [];
   }
 }
 
@@ -226,7 +226,7 @@ class BlueZGattService {
       BlueZUUID(_object.getStringProperty(_serviceInterfaceName, 'UUID') ?? '');
 
   /// The Gatt characteristics provided by this service.
-  Iterable<BlueZGattCharacteristic> get gattCharacteristics =>
+  List<BlueZGattCharacteristic> get gattCharacteristics =>
       _client._getGattCharacteristics(_object.path);
 }
 
@@ -319,11 +319,11 @@ class BlueZGattCharacteristic {
   // TODO(robert-ancell): Functions that require fd manipulation - StartNotify(), StopNotify(), AcquireNotify(), NotifyAcquired, Notifying, AcquireWrite(), WriteAcquired
 
   /// The Gatt descriptors provided by this characteristic.
-  Iterable<BlueZGattDescriptor> get gattDescriptors =>
+  List<BlueZGattDescriptor> get gattDescriptors =>
       _client._getGattDescriptors(_object.path);
 
   /// Reads the value of the characteristic.
-  Future<Iterable<int>> readValue({int? offset}) async {
+  Future<List<int>> readValue({int? offset}) async {
     var options = <DBusValue, DBusValue>{};
     if (offset != null) {
       options[DBusString('offset')] = DBusUint16(offset);
@@ -400,7 +400,7 @@ class BlueZGattDescriptor {
       _object.getStringProperty(_gattDescriptorInterfaceName, 'UUID') ?? '');
 
   /// Reads the value of the descriptor.
-  Future<Iterable<int>> readValue({int? offset}) async {
+  Future<List<int>> readValue({int? offset}) async {
     var options = <DBusValue, DBusValue>{};
     if (offset != null) {
       options[DBusString('offset')] = DBusUint16(offset);
@@ -628,9 +628,9 @@ class BlueZDevice {
       _object.getInt16Property(_deviceInterfaceName, 'TxPower') ?? 0;
 
   /// UUIDs that indicate the available remote services.
-  Iterable<BlueZUUID> get uuids {
+  List<BlueZUUID> get uuids {
     var value = _object.getStringArrayProperty(_deviceInterfaceName, 'UUIDs');
-    return value != null ? value.map((value) => BlueZUUID(value)) : [];
+    return value != null ? value.map((value) => BlueZUUID(value)).toList() : [];
   }
 
   /// True if the device can wake the host from system suspend.
@@ -642,7 +642,7 @@ class BlueZDevice {
       _deviceInterfaceName, 'WakeAllowed', DBusBoolean(value));
 
   /// The Gatt services provided by this device.
-  Iterable<BlueZGattService> get gattServices =>
+  List<BlueZGattService> get gattServices =>
       _client._getGattServices(_object.path);
 }
 
@@ -952,7 +952,7 @@ class BlueZClient {
     return object.interfaces.containsKey('org.bluez.Device1');
   }
 
-  Iterable<BlueZGattService> _getGattServices(DBusObjectPath parentPath) {
+  List<BlueZGattService> _getGattServices(DBusObjectPath parentPath) {
     var services = <BlueZGattService>[];
     for (var object in _objects.values) {
       if (object.path.isInNamespace(parentPath) && _isGattService(object)) {
@@ -966,7 +966,7 @@ class BlueZClient {
     return object.interfaces.containsKey('org.bluez.GattService1');
   }
 
-  Iterable<BlueZGattCharacteristic> _getGattCharacteristics(
+  List<BlueZGattCharacteristic> _getGattCharacteristics(
       DBusObjectPath parentPath) {
     var characteristics = <BlueZGattCharacteristic>[];
     for (var object in _objects.values) {
@@ -982,7 +982,7 @@ class BlueZClient {
     return object.interfaces.containsKey('org.bluez.GattCharacteristic1');
   }
 
-  Iterable<BlueZGattDescriptor> _getGattDescriptors(DBusObjectPath parentPath) {
+  List<BlueZGattDescriptor> _getGattDescriptors(DBusObjectPath parentPath) {
     var descriptors = <BlueZGattDescriptor>[];
     for (var object in _objects.values) {
       if (object.path.isInNamespace(parentPath) && _isGattDescriptor(object)) {
