@@ -62,10 +62,8 @@ class MockBlueZAdapterObject extends MockBlueZObject {
           'Pairable': DBusBoolean(pairable),
           'PairableTimeout': DBusUint32(pairableTimeout),
           'Powered': DBusBoolean(powered),
-          'Roles': DBusArray(
-              DBusSignature('s'), roles.map((name) => DBusString(name))),
-          'UUIDs': DBusArray(
-              DBusSignature('s'), uuids.map((uuid) => DBusString(uuid)))
+          'Roles': DBusArray.string(roles),
+          'UUIDs': DBusArray.string(uuids)
         }
       };
 }
@@ -140,17 +138,12 @@ class MockBlueZDeviceObject extends MockBlueZObject {
           'Name': DBusString(name),
           'Paired': DBusBoolean(paired),
           'RSSI': DBusInt16(rssi),
-          'ServiceData': DBusDict(
-              DBusSignature('s'),
-              DBusSignature('v'),
-              serviceData.map((name, value) =>
-                  MapEntry(DBusString(name), DBusVariant(value)))),
+          'ServiceData': DBusDict.stringVariant(serviceData),
           'ServicesResolved': DBusBoolean(servicesResolved),
           'Trusted': DBusBoolean(trusted),
           'TxPower': DBusInt16(txPower),
           'WakeAllowed': DBusBoolean(wakeAllowed),
-          'UUIDs': DBusArray(
-              DBusSignature('s'), uuids.map((uuid) => DBusString(uuid)))
+          'UUIDs': DBusArray.string(uuids)
         }
       };
 }
@@ -173,8 +166,8 @@ class MockBlueZGattServiceObject extends MockBlueZObject {
   Map<String, Map<String, DBusValue>> get interfacesAndProperties => {
         'org.bluez.GattService1': {
           'Device': device.path,
-          'Includes': DBusArray(
-              DBusSignature('o'), includes.map((service) => service.path)),
+          'Includes':
+              DBusArray.objectPath(includes.map((service) => service.path)),
           'Primary': DBusBoolean(primary),
           'UUID': DBusString(uuid)
         }
@@ -206,15 +199,13 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
   @override
   Map<String, Map<String, DBusValue>> get interfacesAndProperties => {
         'org.bluez.GattCharacteristic1': {
-          'Flags': DBusArray(
-              DBusSignature('s'), flags.map((flag) => DBusString(flag))),
+          'Flags': DBusArray.string(flags),
           'NotifyAcquired': DBusBoolean(notifyAcquired),
           'Notifying': DBusBoolean(notifying),
           'WriteAcquired': DBusBoolean(writeAcquired),
           'Service': service.path,
           'UUID': DBusString(uuid),
-          'Value': DBusArray(
-              DBusSignature('y'), value.map((value) => DBusByte(value)))
+          'Value': DBusArray.byte(value)
         }
       };
 }
@@ -237,7 +228,7 @@ class MockBlueZGattDescriptorObject extends MockBlueZObject {
         'org.bluez.GattDescriptor1': {
           'Characteristic': characteristic.path,
           'UUID': DBusString(uuid),
-          'Value': DBusArray(DBusSignature('y'), value.map((v) => DBusByte(v)))
+          'Value': DBusArray.byte(value)
         }
       };
 }

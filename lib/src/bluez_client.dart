@@ -85,10 +85,8 @@ class BlueZAdapter {
 
   /// Sets the device discovery filter for the caller. [filter] contains filter values as returnd by [getDiscoveryFilters].
   Future<void> setDiscoveryFilter(Map<String, DBusValue> filter) async {
-    await _object.callMethod(_adapterInterfaceName, 'SetDiscoveryFilter', [
-      DBusDict(DBusSignature('s'), DBusSignature('v'),
-          filter.map((k, v) => MapEntry(DBusString(k), v)))
-    ]);
+    await _object.callMethod(_adapterInterfaceName, 'SetDiscoveryFilter',
+        [DBusDict.stringVariant(filter)]);
   }
 
   /// Start discovery of devices on this adapter.
@@ -312,14 +310,12 @@ class BlueZGattCharacteristic {
 
   /// Reads the value of the characteristic.
   Future<List<int>> readValue({int? offset}) async {
-    var options = <DBusValue, DBusValue>{};
+    var options = <String, DBusValue>{};
     if (offset != null) {
-      options[DBusString('offset')] = DBusUint16(offset);
+      options['offset'] = DBusUint16(offset);
     }
-    var result = await _object.callMethod(
-        _gattCharacteristicInterfaceName,
-        'ReadValue',
-        [DBusDict(DBusSignature('s'), DBusSignature('v'), options)]);
+    var result = await _object.callMethod(_gattCharacteristicInterfaceName,
+        'ReadValue', [DBusDict.stringVariant(options)]);
     var values = result.returnValues;
     if (values.length != 1 || values[0].signature != DBusSignature('ay')) {
       throw 'org.bluez.GattCharacteristic1.ReadValue returned invalid result: $values';
@@ -335,9 +331,9 @@ class BlueZGattCharacteristic {
       {int? offset,
       BlueZGattCharacteristicWriteType? type,
       bool? prepareAuthorize}) async {
-    var options = <DBusValue, DBusValue>{};
+    var options = <String, DBusValue>{};
     if (offset != null) {
-      options[DBusString('offset')] = DBusUint16(offset);
+      options['offset'] = DBusUint16(offset);
     }
     if (type != null) {
       String typeName;
@@ -352,16 +348,13 @@ class BlueZGattCharacteristic {
           typeName = 'reliable';
           break;
       }
-      options[DBusString('type')] = DBusString(typeName);
+      options['type'] = DBusString(typeName);
     }
     if (prepareAuthorize != null) {
-      options[DBusString('prepare-authorize')] = DBusBoolean(prepareAuthorize);
+      options['prepare-authorize'] = DBusBoolean(prepareAuthorize);
     }
-    var result = await _object
-        .callMethod(_gattCharacteristicInterfaceName, 'WriteValue', [
-      DBusArray(DBusSignature('y'), data.map((v) => DBusByte(v))),
-      DBusDict(DBusSignature('s'), DBusSignature('v'), options)
-    ]);
+    var result = await _object.callMethod(_gattCharacteristicInterfaceName,
+        'WriteValue', [DBusArray.byte(data), DBusDict.stringVariant(options)]);
     var values = result.returnValues;
     if (values.isNotEmpty) {
       throw 'org.bluez.GattCharacteristic1.WriteValue returned invalid result: $values';
@@ -389,14 +382,12 @@ class BlueZGattDescriptor {
 
   /// Reads the value of the descriptor.
   Future<List<int>> readValue({int? offset}) async {
-    var options = <DBusValue, DBusValue>{};
+    var options = <String, DBusValue>{};
     if (offset != null) {
-      options[DBusString('offset')] = DBusUint16(offset);
+      options['offset'] = DBusUint16(offset);
     }
-    var result = await _object.callMethod(
-        _gattDescriptorInterfaceName,
-        'ReadValue',
-        [DBusDict(DBusSignature('s'), DBusSignature('v'), options)]);
+    var result = await _object.callMethod(_gattDescriptorInterfaceName,
+        'ReadValue', [DBusDict.stringVariant(options)]);
     var values = result.returnValues;
     if (values.length != 1 || values[0].signature != DBusSignature('ay')) {
       throw 'org.bluez.GattDescriptor1.ReadValue returned invalid result: $values';
@@ -410,18 +401,15 @@ class BlueZGattDescriptor {
   /// Writes [data] to the descriptor.
   Future<void> writeValue(Iterable<int> data,
       {int? offset, bool? prepareAuthorize}) async {
-    var options = <DBusValue, DBusValue>{};
+    var options = <String, DBusValue>{};
     if (offset != null) {
-      options[DBusString('offset')] = DBusUint16(offset);
+      options['offset'] = DBusUint16(offset);
     }
     if (prepareAuthorize != null) {
-      options[DBusString('prepare-authorize')] = DBusBoolean(prepareAuthorize);
+      options['prepare-authorize'] = DBusBoolean(prepareAuthorize);
     }
-    var result =
-        await _object.callMethod(_gattDescriptorInterfaceName, 'WriteValue', [
-      DBusArray(DBusSignature('y'), data.map((v) => DBusByte(v))),
-      DBusDict(DBusSignature('s'), DBusSignature('v'), options)
-    ]);
+    var result = await _object.callMethod(_gattDescriptorInterfaceName,
+        'WriteValue', [DBusArray.byte(data), DBusDict.stringVariant(options)]);
     var values = result.returnValues;
     if (values.isNotEmpty) {
       throw 'org.bluez.GattDescriptor1.WriteValue returned invalid result: $values';
