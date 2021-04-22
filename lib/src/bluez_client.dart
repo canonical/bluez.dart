@@ -121,8 +121,10 @@ class BlueZAdapter {
       _object.getStringProperty(_adapterInterfaceName, 'Alias') ?? '';
 
   /// Sets the alternative name for this adapter.
-  set alias(String value) =>
-      _object.setProperty(_adapterInterfaceName, 'Alias', DBusString(value));
+  Future<void> setAlias(String value) async {
+    await _object.setProperty(
+        _adapterInterfaceName, 'Alias', DBusString(value));
+  }
 
   /// Bluetooth device class.
   int get deviceClass =>
@@ -134,15 +136,19 @@ class BlueZAdapter {
       false;
 
   /// Sets if this adapter can be discovered by other Bluetooth devices.
-  set discoverable(bool value) => _object.setProperty(
-      _adapterInterfaceName, 'Discoverable', DBusBoolean(value));
+  Future<void> setDiscoverable(bool value) async {
+    await _object.setProperty(
+        _adapterInterfaceName, 'Discoverable', DBusBoolean(value));
+  }
 
   int get discoverableTimeout =>
       _object.getUint32Property(_adapterInterfaceName, 'DiscoverableTimeout') ??
       0;
 
-  set discoverableTimeout(int value) => _object.setProperty(
-      _adapterInterfaceName, 'DiscoverableTimeout', DBusUint32(value));
+  Future<void> setDiscoverableTimeout(int value) async {
+    await _object.setProperty(
+        _adapterInterfaceName, 'DiscoverableTimeout', DBusUint32(value));
+  }
 
   /// True if currently discovering devices.
   bool get discovering =>
@@ -161,24 +167,30 @@ class BlueZAdapter {
       _object.getBooleanProperty(_adapterInterfaceName, 'Pairable') ?? false;
 
   /// Sets if other Bluetooth devices can pair with this adapter.
-  set pairable(bool value) => _object.setProperty(
-      _adapterInterfaceName, 'Pairable', DBusBoolean(value));
+  Future<void> setPairable(bool value) async {
+    await _object.setProperty(
+        _adapterInterfaceName, 'Pairable', DBusBoolean(value));
+  }
 
   /// Timeout in seconds when pairing.
   int get pairableTimeout =>
       _object.getUint32Property(_adapterInterfaceName, 'PairableTimeout') ?? 0;
 
   /// Sets the timeout in seconds when pairing.
-  set pairableTimeout(int value) => _object.setProperty(
-      _adapterInterfaceName, 'PairableTimeout', DBusUint32(value));
+  Future<void> setPairableTimeout(int value) async {
+    await _object.setProperty(
+        _adapterInterfaceName, 'PairableTimeout', DBusUint32(value));
+  }
 
   /// True if this adapter is powered on.
   bool get powered =>
       _object.getBooleanProperty(_adapterInterfaceName, 'Powered') ?? false;
 
   /// Sets if this adapter is powered on.
-  set powered(bool value) =>
-      _object.setProperty(_adapterInterfaceName, 'Powered', DBusBoolean(value));
+  Future<void> setPowered(bool value) async {
+    await _object.setProperty(
+        _adapterInterfaceName, 'Powered', DBusBoolean(value));
+  }
 
   List<String> get roles =>
       _object.getStringArrayProperty(_adapterInterfaceName, 'Roles') ?? [];
@@ -490,8 +502,9 @@ class BlueZDevice {
       _object.getStringProperty(_deviceInterfaceName, 'Alias') ?? '';
 
   /// Sets the alternative name for this device.
-  set alias(String value) =>
-      _object.setProperty(_deviceInterfaceName, 'Alias', DBusString(value));
+  Future<void> setAlias(String value) async {
+    await _object.setProperty(_deviceInterfaceName, 'Alias', DBusString(value));
+  }
 
   /// External appearance of device, as found on GAP service.
   int get appearance =>
@@ -502,8 +515,10 @@ class BlueZDevice {
       _object.getBooleanProperty(_deviceInterfaceName, 'Blocked') ?? false;
 
   /// Sets if connections from this device will be ignored.
-  set blocked(bool value) =>
-      _object.setProperty(_deviceInterfaceName, 'Blocked', DBusBoolean(value));
+  Future<void> setBlocked(bool value) async {
+    await _object.setProperty(
+        _deviceInterfaceName, 'Blocked', DBusBoolean(value));
+  }
 
   /// True if this device is currently connected.
   bool get connected =>
@@ -596,8 +611,10 @@ class BlueZDevice {
       _object.getBooleanProperty(_deviceInterfaceName, 'Trusted') ?? false;
 
   /// Sets if the remote is seen as trusted.
-  set trusted(bool value) =>
-      _object.setProperty(_deviceInterfaceName, 'Trusted', DBusBoolean(value));
+  Future<void> setTrusted(bool value) async {
+    await _object.setProperty(
+        _deviceInterfaceName, 'Trusted', DBusBoolean(value));
+  }
 
   /// Advertised transmit power level.
   int get txPower =>
@@ -616,8 +633,10 @@ class BlueZDevice {
       _object.getBooleanProperty(_deviceInterfaceName, 'WakeAllowed') ?? false;
 
   /// Sets if the device can wake the host from system suspend.
-  set wakeAllowed(bool value) => _object.setProperty(
-      _deviceInterfaceName, 'WakeAllowed', DBusBoolean(value));
+  Future<void> setWakeAllowed(bool value) async {
+    await _object.setProperty(
+        _deviceInterfaceName, 'WakeAllowed', DBusBoolean(value));
+  }
 
   /// The Gatt services provided by this device.
   List<BlueZGattService> get gattServices =>

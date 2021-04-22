@@ -17,16 +17,16 @@ class MockBlueZAdapterObject extends MockBlueZObject {
 
   final String address;
   final String addressType;
-  final String alias;
+  String alias;
   final int class_;
-  final bool discoverable;
-  final int discoverableTimeout;
+  bool discoverable;
+  int discoverableTimeout;
   final bool discovering;
   final String modalias;
   final String name;
-  final bool pairable;
-  final int pairableTimeout;
-  final bool powered;
+  bool pairable;
+  int pairableTimeout;
+  bool powered;
   final List<String> roles;
   final List<String> uuids;
 
@@ -66,6 +66,31 @@ class MockBlueZAdapterObject extends MockBlueZObject {
           'UUIDs': DBusArray.string(uuids)
         }
       };
+
+  @override
+  Future<DBusMethodResponse> setProperty(
+      String interface, String name, DBusValue value) async {
+    if (interface != 'org.bluez.Adapter1') {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+
+    if (name == 'Alias') {
+      alias = (value as DBusString).value;
+    } else if (name == 'Discoverable') {
+      discoverable = (value as DBusBoolean).value;
+    } else if (name == 'DiscoverableTimeout') {
+      discoverableTimeout = (value as DBusUint32).value;
+    } else if (name == 'Pairable') {
+      pairable = (value as DBusBoolean).value;
+    } else if (name == 'PairableTimeout') {
+      pairableTimeout = (value as DBusUint32).value;
+    } else if (name == 'Powered') {
+      powered = (value as DBusBoolean).value;
+    } else {
+      return DBusMethodErrorResponse.propertyReadOnly();
+    }
+    return DBusMethodSuccessResponse();
+  }
 }
 
 class MockBlueZDeviceObject extends MockBlueZObject {
@@ -73,9 +98,9 @@ class MockBlueZDeviceObject extends MockBlueZObject {
 
   final String address;
   final String addressType;
-  final String alias;
+  String alias;
   final int appearance;
-  final bool blocked;
+  bool blocked;
   final int class_;
   final bool connected;
   final String icon;
@@ -87,9 +112,9 @@ class MockBlueZDeviceObject extends MockBlueZObject {
   final int rssi;
   final Map<String, DBusValue> serviceData;
   final bool servicesResolved;
-  final bool trusted;
+  bool trusted;
   final int txPower;
-  final bool wakeAllowed;
+  bool wakeAllowed;
   final List<String> uuids;
 
   MockBlueZDeviceObject(this.adapter,
@@ -146,6 +171,27 @@ class MockBlueZDeviceObject extends MockBlueZObject {
           'UUIDs': DBusArray.string(uuids)
         }
       };
+
+  @override
+  Future<DBusMethodResponse> setProperty(
+      String interface, String name, DBusValue value) async {
+    if (interface != 'org.bluez.Device1') {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+
+    if (name == 'Alias') {
+      alias = (value as DBusString).value;
+    } else if (name == 'Blocked') {
+      blocked = (value as DBusBoolean).value;
+    } else if (name == 'Trusted') {
+      trusted = (value as DBusBoolean).value;
+    } else if (name == 'WakeAllowed') {
+      wakeAllowed = (value as DBusBoolean).value;
+    } else {
+      return DBusMethodErrorResponse.propertyReadOnly();
+    }
+    return DBusMethodSuccessResponse();
+  }
 }
 
 class MockBlueZGattServiceObject extends MockBlueZObject {
@@ -492,6 +538,52 @@ void main() {
     await client.close();
   });
 
+  test('adapter set properties', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    var a = await bluez.addAdapter('hci0',
+        alias: 'Original Alias',
+        discoverable: false,
+        discoverableTimeout: 0,
+        pairable: false,
+        pairableTimeout: 0,
+        powered: false);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(client.adapters, hasLength(1));
+    var adapter = client.adapters[0];
+
+    expect(a.alias, equals('Original Alias'));
+    await adapter.setAlias('New Alias');
+    expect(a.alias, equals('New Alias'));
+
+    expect(a.discoverable, isFalse);
+    expect(a.discoverableTimeout, equals(0));
+    await adapter.setDiscoverable(true);
+    await adapter.setDiscoverableTimeout(60);
+    expect(a.discoverable, isTrue);
+    expect(a.discoverableTimeout, equals(60));
+
+    expect(a.pairable, isFalse);
+    expect(a.pairableTimeout, equals(0));
+    await adapter.setPairable(true);
+    await adapter.setPairableTimeout(60);
+    expect(a.pairable, isTrue);
+    expect(a.pairableTimeout, equals(60));
+
+    expect(a.powered, isFalse);
+    await adapter.setPowered(true);
+    expect(a.powered, isTrue);
+
+    await client.close();
+  });
+
   test('no devices', () async {
     var server = DBusServer();
     var clientAddress =
@@ -608,6 +700,46 @@ void main() {
     expect(device.rssi, equals(123));
     expect(device.txPower, equals(456));
     expect(device.uuids, equals([BlueZUUID.short(1), BlueZUUID.short(2)]));
+
+    await client.close();
+  });
+
+  test('device set properties', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    var adapter = await bluez.addAdapter('hci0');
+    var d = await bluez.addDevice(adapter,
+        address: 'DE:71:CE:00:00:01',
+        alias: 'Original Alias',
+        blocked: false,
+        trusted: false,
+        wakeAllowed: false);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+
+    expect(d.alias, equals('Original Alias'));
+    await device.setAlias('New Alias');
+    expect(d.alias, equals('New Alias'));
+
+    expect(d.blocked, isFalse);
+    await device.setBlocked(true);
+    expect(d.blocked, isTrue);
+
+    expect(d.trusted, isFalse);
+    await device.setTrusted(true);
+    expect(d.trusted, isTrue);
+
+    expect(d.wakeAllowed, isFalse);
+    await device.setWakeAllowed(true);
+    expect(d.wakeAllowed, isTrue);
 
     await client.close();
   });
