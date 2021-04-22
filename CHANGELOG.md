@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0
+
+* Replace setters with methods so they can be async.
+
 ## 0.4.0
 
 * Update to dbus 0.4.
