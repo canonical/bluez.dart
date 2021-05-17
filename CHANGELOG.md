@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+* Reliably detect when an object is removed.
+* Update to dbus 0.5.
+* Rename test file so can just run 'dart test'.
+
 ## 0.5.0
 
 * Replace setters with methods so they can be async.
