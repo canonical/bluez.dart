@@ -71,13 +71,10 @@ class BlueZAdapter {
 
   /// Gets the available filters that can be given to [setDiscoveryFilter].
   Future<List<String>> getDiscoveryFilters() async {
-    var result = await _object
-        .callMethod(_adapterInterfaceName, 'GetDiscoveryFilters', []);
-    var values = result.returnValues;
-    if (values.length != 1 || values[0].signature != DBusSignature('as')) {
-      throw 'GetDiscoveryFilters returned invalid result: $values';
-    }
-    return (values[0] as DBusArray)
+    var result = await _object.callMethod(
+        _adapterInterfaceName, 'GetDiscoveryFilters', [],
+        replySignature: DBusSignature('as'));
+    return (result.returnValues[0] as DBusArray)
         .children
         .map((v) => (v as DBusString).value)
         .toList();
@@ -86,23 +83,27 @@ class BlueZAdapter {
   /// Sets the device discovery filter for the caller. [filter] contains filter values as returnd by [getDiscoveryFilters].
   Future<void> setDiscoveryFilter(Map<String, DBusValue> filter) async {
     await _object.callMethod(_adapterInterfaceName, 'SetDiscoveryFilter',
-        [DBusDict.stringVariant(filter)]);
+        [DBusDict.stringVariant(filter)],
+        replySignature: DBusSignature(''));
   }
 
   /// Start discovery of devices on this adapter.
   Future<void> startDiscovery() async {
-    await _object.callMethod(_adapterInterfaceName, 'StartDiscovery', []);
+    await _object.callMethod(_adapterInterfaceName, 'StartDiscovery', [],
+        replySignature: DBusSignature(''));
   }
 
   /// Stop discovery of devices on this adapter.
   Future<void> stopDiscovery() async {
-    await _object.callMethod(_adapterInterfaceName, 'stopDiscovery', []);
+    await _object.callMethod(_adapterInterfaceName, 'stopDiscovery', [],
+        replySignature: DBusSignature(''));
   }
 
   /// Removes settings for [device] from this adapter.
   Future<void> removeDevice(BlueZDevice device) async {
     await _object.callMethod(
-        _adapterInterfaceName, 'RemoveDevice', [device._object.path]);
+        _adapterInterfaceName, 'RemoveDevice', [device._object.path],
+        replySignature: DBusSignature(''));
   }
 
   /// Bluetooth device address of this adapter.
@@ -327,12 +328,9 @@ class BlueZGattCharacteristic {
       options['offset'] = DBusUint16(offset);
     }
     var result = await _object.callMethod(_gattCharacteristicInterfaceName,
-        'ReadValue', [DBusDict.stringVariant(options)]);
-    var values = result.returnValues;
-    if (values.length != 1 || values[0].signature != DBusSignature('ay')) {
-      throw 'org.bluez.GattCharacteristic1.ReadValue returned invalid result: $values';
-    }
-    return (values[0] as DBusArray)
+        'ReadValue', [DBusDict.stringVariant(options)],
+        replySignature: DBusSignature('ay'));
+    return (result.returnValues[0] as DBusArray)
         .children
         .map((value) => (value as DBusByte).value)
         .toList();
@@ -365,12 +363,9 @@ class BlueZGattCharacteristic {
     if (prepareAuthorize != null) {
       options['prepare-authorize'] = DBusBoolean(prepareAuthorize);
     }
-    var result = await _object.callMethod(_gattCharacteristicInterfaceName,
-        'WriteValue', [DBusArray.byte(data), DBusDict.stringVariant(options)]);
-    var values = result.returnValues;
-    if (values.isNotEmpty) {
-      throw 'org.bluez.GattCharacteristic1.WriteValue returned invalid result: $values';
-    }
+    await _object.callMethod(_gattCharacteristicInterfaceName, 'WriteValue',
+        [DBusArray.byte(data), DBusDict.stringVariant(options)],
+        replySignature: DBusSignature(''));
   }
 }
 
@@ -399,12 +394,9 @@ class BlueZGattDescriptor {
       options['offset'] = DBusUint16(offset);
     }
     var result = await _object.callMethod(_gattDescriptorInterfaceName,
-        'ReadValue', [DBusDict.stringVariant(options)]);
-    var values = result.returnValues;
-    if (values.length != 1 || values[0].signature != DBusSignature('ay')) {
-      throw 'org.bluez.GattDescriptor1.ReadValue returned invalid result: $values';
-    }
-    return (values[0] as DBusArray)
+        'ReadValue', [DBusDict.stringVariant(options)],
+        replySignature: DBusSignature('ay'));
+    return (result.returnValues[0] as DBusArray)
         .children
         .map((value) => (value as DBusByte).value)
         .toList();
@@ -420,12 +412,9 @@ class BlueZGattDescriptor {
     if (prepareAuthorize != null) {
       options['prepare-authorize'] = DBusBoolean(prepareAuthorize);
     }
-    var result = await _object.callMethod(_gattDescriptorInterfaceName,
-        'WriteValue', [DBusArray.byte(data), DBusDict.stringVariant(options)]);
-    var values = result.returnValues;
-    if (values.isNotEmpty) {
-      throw 'org.bluez.GattDescriptor1.WriteValue returned invalid result: $values';
-    }
+    await _object.callMethod(_gattDescriptorInterfaceName, 'WriteValue',
+        [DBusArray.byte(data), DBusDict.stringVariant(options)],
+        replySignature: DBusSignature(''));
   }
 }
 
@@ -449,34 +438,40 @@ class BlueZDevice {
 
   /// Connect to this device.
   Future<void> connect() async {
-    await _object.callMethod(_deviceInterfaceName, 'Connect', []);
+    await _object.callMethod(_deviceInterfaceName, 'Connect', [],
+        replySignature: DBusSignature(''));
   }
 
   /// Disconnect from this device
   Future<void> disconnect() async {
-    await _object.callMethod(_deviceInterfaceName, 'Disconnect', []);
+    await _object.callMethod(_deviceInterfaceName, 'Disconnect', [],
+        replySignature: DBusSignature(''));
   }
 
   /// Connects to the service with [uuid].
   Future<void> connectProfile(BlueZUUID uuid) async {
     await _object.callMethod(
-        _deviceInterfaceName, 'ConnectProfile', [DBusString(uuid.toString())]);
+        _deviceInterfaceName, 'ConnectProfile', [DBusString(uuid.toString())],
+        replySignature: DBusSignature(''));
   }
 
   /// Disconnects the service with [uuid].
   Future<void> disconnectProfile(BlueZUUID uuid) async {
     await _object.callMethod(_deviceInterfaceName, 'DisconnectProfile',
-        [DBusString(uuid.toString())]);
+        [DBusString(uuid.toString())],
+        replySignature: DBusSignature(''));
   }
 
   /// Pair with this device.
   Future<void> pair() async {
-    await _object.callMethod(_deviceInterfaceName, 'Pair', []);
+    await _object.callMethod(_deviceInterfaceName, 'Pair', [],
+        replySignature: DBusSignature(''));
   }
 
   /// Cancel a pairing that is in progress.
   Future<void> cancelPairing() async {
-    await _object.callMethod(_deviceInterfaceName, 'CancelPairing', []);
+    await _object.callMethod(_deviceInterfaceName, 'CancelPairing', [],
+        replySignature: DBusSignature(''));
   }
 
   /// The adapter this device belongs to.
