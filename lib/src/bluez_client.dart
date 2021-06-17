@@ -239,6 +239,11 @@ class BlueZGattCharacteristic {
 
   BlueZGattCharacteristic(this._client, this._object);
 
+  Stream<List<String>> get propertiesChangedStream {
+    return _object.interfaces[_gattCharacteristicInterfaceName]!
+        .propertiesChangedStreamController.stream;
+  }
+
   // TODO(robert-ancell): Includes
 
   /// Unique ID for this characteristic.
@@ -315,7 +320,28 @@ class BlueZGattCharacteristic {
     return flags;
   }
 
-  // TODO(robert-ancell): Functions that require fd manipulation - StartNotify(), StopNotify(), AcquireNotify(), NotifyAcquired, Notifying, AcquireWrite(), WriteAcquired
+  // TODO(robert-ancell): Functions that require fd manipulation - AcquireNotify(), NotifyAcquired, AcquireWrite(), WriteAcquired
+
+  Future<void> startNotify() async {
+    final response = await _object
+        .callMethod(_gattCharacteristicInterfaceName, 'StartNotify', []);
+    if (response is DBusMethodErrorResponse) {
+      throw 'org.bluez.GattCharacteristic1.StartNotify returned error: ${response.errorName}';
+    }
+  }
+
+  Future<void> stopNotify() async {
+    final response = await _object
+        .callMethod(_gattCharacteristicInterfaceName, 'StopNotify', []);
+    if (response is DBusMethodErrorResponse) {
+      throw 'org.bluez.GattCharacteristic1.StopNotify returned error: ${response.errorName}';
+    }
+  }
+
+  bool get notifying =>
+      _object.getBooleanProperty(
+          _gattCharacteristicInterfaceName, 'Notifying') ??
+      false;
 
   /// The Gatt descriptors provided by this characteristic.
   List<BlueZGattDescriptor> get descriptors =>
