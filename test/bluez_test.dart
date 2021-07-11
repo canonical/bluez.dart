@@ -21,7 +21,8 @@ class MockBlueZAdapterObject extends MockBlueZObject {
   final int class_;
   bool discoverable;
   int discoverableTimeout;
-  final bool discovering;
+  bool discovering;
+  Map<String, DBusValue> discoveryFilter;
   final String modalias;
   final String name;
   bool pairable;
@@ -38,6 +39,7 @@ class MockBlueZAdapterObject extends MockBlueZObject {
       this.discoverable = false,
       this.discoverableTimeout = 0,
       this.discovering = false,
+      this.discoveryFilter = const {},
       this.modalias = '',
       this.name = '',
       this.pairable = false,
@@ -90,6 +92,33 @@ class MockBlueZAdapterObject extends MockBlueZObject {
       return DBusMethodErrorResponse.propertyReadOnly();
     }
     return DBusMethodSuccessResponse();
+  }
+
+  @override
+  Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
+    if (methodCall.interface != 'org.bluez.Adapter1') {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+
+    switch (methodCall.name) {
+      case 'GetDiscoveryFilters':
+        return DBusMethodSuccessResponse(
+            [DBusArray.string(discoveryFilter.keys)]);
+      case 'SetDiscoveryFilter':
+        var properties = (methodCall.values[0] as DBusDict).children.map((key,
+                value) =>
+            MapEntry((key as DBusString).value, (value as DBusVariant).value));
+        discoveryFilter.addAll(properties);
+        return DBusMethodSuccessResponse();
+      case 'StartDiscovery':
+        discovering = true;
+        return DBusMethodSuccessResponse();
+      case 'StopDiscovery':
+        discovering = false;
+        return DBusMethodSuccessResponse();
+      default:
+        return DBusMethodErrorResponse.unknownMethod();
+    }
   }
 }
 
@@ -301,6 +330,7 @@ class MockBlueZServer extends DBusClient {
       bool discoverable = false,
       int discoverableTimeout = 0,
       bool discovering = false,
+      Map<String, DBusValue> discoveryFilter = const {},
       String modalias = '',
       String name = '',
       bool pairable = false,
@@ -316,6 +346,7 @@ class MockBlueZServer extends DBusClient {
         discoverable: discoverable,
         discoverableTimeout: discoverableTimeout,
         discovering: discovering,
+        discoveryFilter: discoveryFilter,
         modalias: modalias,
         name: name,
         pairable: pairable,
@@ -580,6 +611,76 @@ void main() {
     expect(a.powered, isFalse);
     await adapter.setPowered(true);
     expect(a.powered, isTrue);
+
+    await client.close();
+  });
+
+  test('adapter discover', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    var a = await bluez.addAdapter('hci0', discoveryFilter: {
+      'UUIDs': DBusArray.string([]),
+      'RSSI': DBusInt16(-50),
+      'Pathloss': DBusUint16(0),
+      'Transport': DBusString('auto'),
+      'DuplicateData': DBusBoolean(true),
+      'Discoverable': DBusBoolean(false),
+      'Pattern': DBusString('')
+    });
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(client.adapters, hasLength(1));
+    var adapter = client.adapters[0];
+
+    expect(
+        await adapter.getDiscoveryFilters(),
+        equals([
+          'UUIDs',
+          'RSSI',
+          'Pathloss',
+          'Transport',
+          'DuplicateData',
+          'Discoverable',
+          'Pattern'
+        ]));
+
+    await adapter.setDiscoveryFilter(
+        uuids: [
+          '00000001-0000-1000-8000-00805f9b34fb',
+          '00000002-0000-1000-8000-00805f9b34fb'
+        ],
+        rssi: -99,
+        pathloss: 42,
+        transport: 'le',
+        duplicateData: false,
+        discoverable: true,
+        pattern: 'foo');
+    expect(
+        a.discoveryFilter,
+        equals({
+          'UUIDs': DBusArray(DBusSignature('s'), [
+            DBusString('00000001-0000-1000-8000-00805f9b34fb'),
+            DBusString('00000002-0000-1000-8000-00805f9b34fb')
+          ]),
+          'RSSI': DBusInt16(-99),
+          'Pathloss': DBusUint16(42),
+          'Transport': DBusString('le'),
+          'DuplicateData': DBusBoolean(false),
+          'Discoverable': DBusBoolean(true),
+          'Pattern': DBusString('foo')
+        }));
+
+    expect(a.discovering, isFalse);
+    await adapter.startDiscovery();
+    expect(a.discovering, isTrue);
+    await adapter.stopDiscovery();
+    expect(a.discovering, isFalse);
 
     await client.close();
   });

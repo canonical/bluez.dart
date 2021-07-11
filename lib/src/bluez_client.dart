@@ -80,8 +80,37 @@ class BlueZAdapter {
         .toList();
   }
 
-  /// Sets the device discovery filter for the caller. [filter] contains filter values as returnd by [getDiscoveryFilters].
-  Future<void> setDiscoveryFilter(Map<String, DBusValue> filter) async {
+  /// Sets the device discovery filter.
+  Future<void> setDiscoveryFilter(
+      {List<String>? uuids,
+      int? rssi,
+      int? pathloss,
+      String? transport,
+      bool? duplicateData,
+      bool? discoverable,
+      String? pattern}) async {
+    var filter = <String, DBusValue>{};
+    if (uuids != null) {
+      filter['UUIDs'] = DBusArray.string(uuids);
+    }
+    if (rssi != null) {
+      filter['RSSI'] = DBusInt16(rssi);
+    }
+    if (pathloss != null) {
+      filter['Pathloss'] = DBusUint16(pathloss);
+    }
+    if (transport != null) {
+      filter['Transport'] = DBusString(transport);
+    }
+    if (duplicateData != null) {
+      filter['DuplicateData'] = DBusBoolean(duplicateData);
+    }
+    if (discoverable != null) {
+      filter['Discoverable'] = DBusBoolean(discoverable);
+    }
+    if (pattern != null) {
+      filter['Pattern'] = DBusString(pattern);
+    }
     await _object.callMethod(_adapterInterfaceName, 'SetDiscoveryFilter',
         [DBusDict.stringVariant(filter)],
         replySignature: DBusSignature(''));
@@ -95,7 +124,7 @@ class BlueZAdapter {
 
   /// Stop discovery of devices on this adapter.
   Future<void> stopDiscovery() async {
-    await _object.callMethod(_adapterInterfaceName, 'stopDiscovery', [],
+    await _object.callMethod(_adapterInterfaceName, 'StopDiscovery', [],
         replySignature: DBusSignature(''));
   }
 
