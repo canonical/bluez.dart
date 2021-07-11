@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0
+
+* Fix BlueZAdapter.stopDiscovery not working.
+* Refactor BlueZAdapter.setDiscoveryFilter.
+
 ## 0.6.0
 
 * Reliably detect when an object is removed.
