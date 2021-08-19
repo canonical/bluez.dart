@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1
+
+* Fix detection of removed adapters/devices when they re-appear.
+* Update README about supported platforms.
+
 ## 0.7.0
 
 * Fix BlueZAdapter.stopDiscovery not working.
