@@ -830,7 +830,7 @@ class _BlueZObject extends DBusRemoteObject {
 
   _BlueZObject(DBusClient client, DBusObjectPath path,
       Map<String, Map<String, DBusValue>> interfacesAndProperties)
-      : super(client, 'org.bluez', path) {
+      : super(client, name: 'org.bluez', path: path) {
     updateInterfaces(interfacesAndProperties);
   }
 }
@@ -877,7 +877,8 @@ class BlueZClient {
   BlueZClient({DBusClient? bus})
       : _bus = bus ?? DBusClient.system(),
         _closeBus = bus == null {
-    _root = DBusRemoteObjectManager(_bus, 'org.bluez', DBusObjectPath('/'));
+    _root = DBusRemoteObjectManager(_bus,
+        name: 'org.bluez', path: DBusObjectPath('/'));
   }
 
   /// Connects to the BlueZ daemon.
