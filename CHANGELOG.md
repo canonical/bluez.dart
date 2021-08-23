@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.2
+
+* Update to dbus 0.6.
+
 ## 0.7.1
 
 * Fix detection of removed adapters/devices when they re-appear.
