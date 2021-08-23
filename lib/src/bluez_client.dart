@@ -531,6 +531,7 @@ class BlueZDevice {
   }
 
   /// External appearance of device, as found on GAP service.
+  /// Appearance values are defined in the [Bluetooth specification](https://www.bluetooth.com/specifications/assigned-numbers/).
   int get appearance =>
       _object.getUint16Property(_deviceInterfaceName, 'Appearance') ?? 0;
 
