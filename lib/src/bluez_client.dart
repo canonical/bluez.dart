@@ -938,6 +938,15 @@ class BlueZClient {
       _objects[objectPath] =
           _BlueZObject(_bus, objectPath, interfacesAndProperties);
     });
+
+    // Report initial adapters and devices.
+    for (var object in _objects.values) {
+      if (_isAdapter(object)) {
+        _adapterAddedStreamController.add(BlueZAdapter(object));
+      } else if (_isDevice(object)) {
+        _deviceAddedStreamController.add(BlueZDevice(this, object));
+      }
+    }
   }
 
   /// The adapters present on this system.
