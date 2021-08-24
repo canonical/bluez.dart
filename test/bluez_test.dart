@@ -120,6 +120,32 @@ class MockBlueZAdapterObject extends MockBlueZObject {
         return DBusMethodErrorResponse.unknownMethod();
     }
   }
+
+  void changeProperties(
+      {bool? discoverable,
+      bool? discovering,
+      bool? pairable,
+      bool? powered}) async {
+    var changedProperties = <String, DBusValue>{};
+    if (discoverable != null) {
+      this.discoverable = discoverable;
+      changedProperties['Discoverable'] = DBusBoolean(discoverable);
+    }
+    if (discovering != null) {
+      this.discovering = discovering;
+      changedProperties['Discovering'] = DBusBoolean(discovering);
+    }
+    if (pairable != null) {
+      this.pairable = pairable;
+      changedProperties['Pairable'] = DBusBoolean(pairable);
+    }
+    if (powered != null) {
+      this.powered = powered;
+      changedProperties['Powered'] = DBusBoolean(powered);
+    }
+    await emitPropertiesChanged('org.bluez.Adapter1',
+        changedProperties: changedProperties);
+  }
 }
 
 class MockBlueZDeviceObject extends MockBlueZObject {
@@ -131,14 +157,14 @@ class MockBlueZDeviceObject extends MockBlueZObject {
   final int appearance;
   bool blocked;
   final int class_;
-  final bool connected;
+  bool connected;
   final String icon;
   final bool legacyPairing;
   final Map<int, DBusValue> manufacturerData;
   final String modalias;
   final String name;
-  final bool paired;
-  final int rssi;
+  bool paired;
+  int rssi;
   final Map<String, DBusValue> serviceData;
   final bool servicesResolved;
   bool trusted;
@@ -220,6 +246,24 @@ class MockBlueZDeviceObject extends MockBlueZObject {
       return DBusMethodErrorResponse.propertyReadOnly();
     }
     return DBusMethodSuccessResponse();
+  }
+
+  void changeProperties({bool? connected, bool? paired, int? rssi}) async {
+    var changedProperties = <String, DBusValue>{};
+    if (connected != null) {
+      this.connected = connected;
+      changedProperties['Connected'] = DBusBoolean(connected);
+    }
+    if (paired != null) {
+      this.paired = paired;
+      changedProperties['Paired'] = DBusBoolean(paired);
+    }
+    if (rssi != null) {
+      this.rssi = rssi;
+      changedProperties['RSSI'] = DBusInt16(rssi);
+    }
+    await emitPropertiesChanged('org.bluez.Device1',
+        changedProperties: changedProperties);
   }
 }
 
@@ -615,6 +659,29 @@ void main() {
     await client.close();
   });
 
+  test('adapter properties changed', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    var a = await bluez.addAdapter('hci0', powered: false, discovering: false);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(client.adapters, hasLength(1));
+    var adapter = client.adapters[0];
+    adapter.propertiesChanged.listen(expectAsync1((properties) {
+      expect(properties, equals(['Discovering', 'Powered']));
+      expect(adapter.discovering, isTrue);
+      expect(adapter.powered, isTrue);
+    }));
+
+    a.changeProperties(powered: true, discovering: true);
+  });
+
   test('adapter discover', () async {
     var server = DBusServer();
     var clientAddress =
@@ -843,6 +910,31 @@ void main() {
     expect(d.wakeAllowed, isTrue);
 
     await client.close();
+  });
+
+  test('device properties changed', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    var a = await bluez.addAdapter('hci0');
+    var d = await bluez.addDevice(a,
+        address: 'DE:71:CE:00:00:01', connected: false, rssi: 123);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+    device.propertiesChanged.listen(expectAsync1((properties) {
+      expect(properties, equals(['Connected', 'RSSI']));
+      expect(device.connected, isTrue);
+      expect(device.rssi, equals(124));
+    }));
+
+    d.changeProperties(connected: true, rssi: 124);
   });
 
   test('no gatt services', () async {
