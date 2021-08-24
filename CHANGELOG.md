@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.3
+
+* Report all initial adapters and devices on connect.
+* Document where the values of BlueZDevice.appearance are defined.
+* Add an example of how to monitor for events.
+* Add tests for adapter/device property changes.
+
 ## 0.7.2
 
 * Update to dbus 0.6.
