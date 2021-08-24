@@ -2,18 +2,11 @@ import 'package:bluez/bluez.dart';
 
 void main() async {
   var client = BlueZClient();
-  await client.connect();
-
   client.adapterAdded.listen((adapter) => onAdapterAdded(adapter));
   client.adapterRemoved.listen((adapter) => onAdapterRemoved(adapter));
-  for (var adapter in client.adapters) {
-    onAdapterAdded(adapter);
-  }
   client.deviceAdded.listen((device) => onDeviceAdded(device));
   client.deviceRemoved.listen((device) => onDeviceRemoved(device));
-  for (var device in client.devices) {
-    onDeviceAdded(device);
-  }
+  await client.connect();
 }
 
 void onAdapterAdded(BlueZAdapter adapter) {
