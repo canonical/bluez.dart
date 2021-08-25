@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.4
+
+* Detect BlueZ D-Bus exceptions and provide classes for them.
+
 ## 0.7.3
 
 * Report all initial adapters and devices on connect.
