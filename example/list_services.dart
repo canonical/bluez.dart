@@ -23,8 +23,12 @@ void main() async {
         String characteristicValue;
         try {
           characteristicValue = '${await characteristic.readValue()}';
+        } on BlueZNotPermittedException {
+          characteristicValue = '<write only>';
+        } on BlueZException catch (e) {
+          characteristicValue = '<${e.message}>';
         } catch (e) {
-          characteristicValue = '<read failed: $e>';
+          characteristicValue = '<$e>';
         }
         print(
             '    Characteristic ${characteristic.uuid} = $characteristicValue');
@@ -32,8 +36,12 @@ void main() async {
           String descriptorValue;
           try {
             descriptorValue = '${await descriptor.readValue()}';
+          } on BlueZNotPermittedException {
+            descriptorValue = '<write only>';
+          } on BlueZException catch (e) {
+            descriptorValue = '<${e.message}>';
           } catch (e) {
-            descriptorValue = '<read failed: %{e}>';
+            descriptorValue = '<$e>';
           }
           print('      Descriptor ${descriptor.uuid} = $descriptorValue');
         }
