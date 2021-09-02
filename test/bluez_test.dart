@@ -501,51 +501,56 @@ void main() {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.adapters, isEmpty);
     expect(client.devices, isEmpty);
-
-    await client.close();
   });
 
   test('adapters', () async {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     await bluez.addAdapter('hci0', address: 'AD:A9:7E:F0:00:01');
     await bluez.addAdapter('hci1', address: 'AD:A9:7E:F0:00:02');
     await bluez.addAdapter('hci2', address: 'AD:A9:7E:F0:00:03');
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.adapters, hasLength(3));
     expect(client.adapters[0].address, equals('AD:A9:7E:F0:00:01'));
     expect(client.adapters[1].address, equals('AD:A9:7E:F0:00:02'));
     expect(client.adapters[2].address, equals('AD:A9:7E:F0:00:03'));
-
-    await client.close();
   });
 
   test('adapter added', () async {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     client.adapterAdded.listen(expectAsync1((adapter) {
       expect(adapter.address, equals('AD:A9:7E:F0:00:01'));
@@ -558,12 +563,15 @@ void main() {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     var adapter = await bluez.addAdapter('hci0', address: 'AD:A9:7E:F0:00:01');
 
@@ -578,9 +586,11 @@ void main() {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     await bluez.addAdapter('hci0',
         address: 'AD:A9:7E:F0:00:01',
         alias: 'Test Adapter Alias',
@@ -598,6 +608,7 @@ void main() {
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.adapters, hasLength(1));
     var adapter = client.adapters[0];
@@ -609,17 +620,17 @@ void main() {
     expect(adapter.name, equals('Test Adapter'));
     expect(adapter.roles, equals(['role1', 'role2']));
     expect(adapter.uuids, equals([BlueZUUID.short(1), BlueZUUID.short(2)]));
-
-    await client.close();
   });
 
   test('adapter set properties', () async {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     var a = await bluez.addAdapter('hci0',
         alias: 'Original Alias',
         discoverable: false,
@@ -630,6 +641,7 @@ void main() {
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.adapters, hasLength(1));
     var adapter = client.adapters[0];
@@ -655,21 +667,22 @@ void main() {
     expect(a.powered, isFalse);
     await adapter.setPowered(true);
     expect(a.powered, isTrue);
-
-    await client.close();
   });
 
   test('adapter properties changed', () async {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     var a = await bluez.addAdapter('hci0', powered: false, discovering: false);
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.adapters, hasLength(1));
     var adapter = client.adapters[0];
@@ -687,8 +700,10 @@ void main() {
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
+    addTearDown(() async => await server.close());
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     var a = await bluez.addAdapter('hci0', discoveryFilter: {
       'UUIDs': DBusArray.string([]),
       'RSSI': DBusInt16(-50),
@@ -701,6 +716,7 @@ void main() {
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.adapters, hasLength(1));
     var adapter = client.adapters[0];
@@ -748,34 +764,35 @@ void main() {
     expect(a.discovering, isTrue);
     await adapter.stopDiscovery();
     expect(a.discovering, isFalse);
-
-    await client.close();
   });
 
   test('no devices', () async {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     await bluez.addAdapter('hci0');
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.devices, isEmpty);
-
-    await client.close();
   });
 
   test('devices', () async {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     var adapter = await bluez.addAdapter('hci0');
     await bluez.addDevice(adapter, address: 'DE:71:CE:00:00:01');
     await bluez.addDevice(adapter, address: 'DE:71:CE:00:00:02');
@@ -783,25 +800,27 @@ void main() {
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.devices, hasLength(3));
     expect(client.devices[0].address, equals('DE:71:CE:00:00:01'));
     expect(client.devices[1].address, equals('DE:71:CE:00:00:02'));
     expect(client.devices[2].address, equals('DE:71:CE:00:00:03'));
-
-    await client.close();
   });
 
   test('device added', () async {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     var adapter = await bluez.addAdapter('hci0');
 
@@ -816,9 +835,11 @@ void main() {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
@@ -837,9 +858,11 @@ void main() {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     var adapter = await bluez.addAdapter('hci0');
     await bluez.addDevice(adapter,
         address: 'DE:71:CE:00:00:01',
@@ -856,6 +879,7 @@ void main() {
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.devices, hasLength(1));
     var device = client.devices[0];
@@ -868,17 +892,17 @@ void main() {
     expect(device.rssi, equals(123));
     expect(device.txPower, equals(456));
     expect(device.uuids, equals([BlueZUUID.short(1), BlueZUUID.short(2)]));
-
-    await client.close();
   });
 
   test('device set properties', () async {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     var adapter = await bluez.addAdapter('hci0');
     var d = await bluez.addDevice(adapter,
         address: 'DE:71:CE:00:00:01',
@@ -889,6 +913,7 @@ void main() {
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.devices, hasLength(1));
     var device = client.devices[0];
@@ -908,23 +933,24 @@ void main() {
     expect(d.wakeAllowed, isFalse);
     await device.setWakeAllowed(true);
     expect(d.wakeAllowed, isTrue);
-
-    await client.close();
   });
 
   test('device properties changed', () async {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     var a = await bluez.addAdapter('hci0');
     var d = await bluez.addDevice(a,
         address: 'DE:71:CE:00:00:01', connected: false, rssi: 123);
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.devices, hasLength(1));
     var device = client.devices[0];
@@ -941,15 +967,18 @@ void main() {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     var adapter = await bluez.addAdapter('hci0');
     await bluez.addDevice(adapter,
         address: 'DE:71:CE:00:00:01', servicesResolved: true);
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.devices, hasLength(1));
     var device = client.devices[0];
@@ -961,9 +990,11 @@ void main() {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     var adapter = await bluez.addAdapter('hci0');
     var d = await bluez.addDevice(adapter,
         address: 'DE:71:CE:00:00:01', servicesResolved: true);
@@ -975,6 +1006,7 @@ void main() {
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.devices, hasLength(1));
     var device = client.devices[0];
@@ -992,9 +1024,11 @@ void main() {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     var adapter = await bluez.addAdapter('hci0');
     var d = await bluez.addDevice(adapter,
         address: 'DE:71:CE:00:00:01', servicesResolved: true);
@@ -1029,6 +1063,7 @@ void main() {
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.devices, hasLength(1));
     var device = client.devices[0];
@@ -1067,9 +1102,11 @@ void main() {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
 
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
+    addTearDown(() async => await bluez.close());
     var adapter = await bluez.addAdapter('hci0');
     var d = await bluez.addDevice(adapter,
         address: 'DE:71:CE:00:00:01', servicesResolved: true);
@@ -1087,6 +1124,7 @@ void main() {
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
+    addTearDown(() async => await client.close());
 
     expect(client.devices, hasLength(1));
     var device = client.devices[0];
