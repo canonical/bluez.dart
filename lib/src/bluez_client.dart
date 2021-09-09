@@ -301,12 +301,10 @@ class BlueZAdapter {
       _object.getStringArrayProperty(_adapterInterfaceName, 'Roles') ?? [];
 
   /// List of 128-bit UUIDs that represents the available local services.
-  List<BlueZUUID> get uuids {
-    var value = _object.getStringArrayProperty(_adapterInterfaceName, 'UUIDs');
-    return value != null
-        ? value.map((value) => BlueZUUID.fromString(value)).toList()
-        : [];
-  }
+  List<BlueZUUID> get uuids =>
+      (_object.getStringArrayProperty(_adapterInterfaceName, 'UUIDs') ?? [])
+          .map((value) => BlueZUUID.fromString(value))
+          .toList();
 }
 
 /// A GATT service running on a BlueZ device.
@@ -721,12 +719,10 @@ class BlueZDevice {
       _object.getInt16Property(_deviceInterfaceName, 'TxPower') ?? 0;
 
   /// UUIDs that indicate the available remote services.
-  List<BlueZUUID> get uuids {
-    var value = _object.getStringArrayProperty(_deviceInterfaceName, 'UUIDs');
-    return value != null
-        ? value.map((value) => BlueZUUID.fromString(value)).toList()
-        : [];
-  }
+  List<BlueZUUID> get uuids =>
+      (_object.getStringArrayProperty(_deviceInterfaceName, 'UUIDs') ?? [])
+          .map((value) => BlueZUUID.fromString(value))
+          .toList();
 
   /// True if the device can wake the host from system suspend.
   bool get wakeAllowed =>
