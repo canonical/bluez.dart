@@ -497,6 +497,42 @@ class MockBlueZServer extends DBusClient {
 }
 
 void main() {
+  test('uuid', () async {
+    // Too short.
+    expect(() => BlueZUUID([]), throwsFormatException);
+    expect(() => BlueZUUID([1, 2, 3]), throwsFormatException);
+
+    // Invalid strings.
+    expect(() => BlueZUUID.fromString(''), throwsFormatException);
+    expect(() => BlueZUUID.fromString('000004d200001000800000805f9b34fb'),
+        throwsFormatException);
+    expect(
+        () => BlueZUUID.fromString('0000-04d2-0000-1000-8000-0080-5f9b-34fb'),
+        throwsFormatException);
+    expect(() => BlueZUUID.fromString('4d2-0-1000-8000-805f9b34fb'),
+        throwsFormatException);
+
+    // Different constructors.
+    expect(
+        BlueZUUID(
+            [0, 0, 4, 210, 0, 0, 16, 0, 128, 0, 0, 128, 95, 155, 52, 251]),
+        equals(BlueZUUID.fromString('000004d2-0000-1000-8000-00805f9b34fb')));
+    expect(BlueZUUID.fromString('000004d2-0000-1000-8000-00805f9b34fb'),
+        equals(BlueZUUID.fromString('000004d2-0000-1000-8000-00805f9b34fb')));
+    expect(BlueZUUID.short(1234),
+        equals(BlueZUUID.fromString('000004d2-0000-1000-8000-00805f9b34fb')));
+
+    // Can determine which UUIDs are in short form.
+    expect(BlueZUUID.fromString('000004d2-0000-1000-8000-00805f9b34fb').isShort,
+        isTrue);
+    expect(BlueZUUID.fromString('e95d0753-251d-470a-a062-fa1922dfa9a8').isShort,
+        isFalse);
+
+    // Can read raw value.
+    expect(BlueZUUID.fromString('000004d2-0000-1000-8000-00805f9b34fb').value,
+        equals([0, 0, 4, 210, 0, 0, 16, 0, 128, 0, 0, 128, 95, 155, 52, 251]));
+  });
+
   test('no adapters or devices', () async {
     var server = DBusServer();
     var clientAddress =
