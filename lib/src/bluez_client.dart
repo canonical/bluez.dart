@@ -638,10 +638,8 @@ class BlueZDevice {
   /// Manufacturer specific advertisement data.
   Map<BlueZManufacturerId, List<int>> get manufacturerData {
     var value =
-        _object.getCachedProperty(_deviceInterfaceName, 'ManufacturerData');
-    if (value == null) {
-      return {};
-    }
+        _object.getCachedProperty(_deviceInterfaceName, 'ManufacturerData') ??
+            DBusDict(DBusSignature('q'), DBusSignature('v'), {});
     if (value.signature != DBusSignature('a{qv}')) {
       return {};
     }
@@ -677,10 +675,9 @@ class BlueZDevice {
 
   /// Service advertisement data.
   Map<BlueZUUID, List<int>> get serviceData {
-    var value = _object.getCachedProperty(_deviceInterfaceName, 'ServiceData');
-    if (value == null) {
-      return {};
-    }
+    var value =
+        _object.getCachedProperty(_deviceInterfaceName, 'ServiceData') ??
+            DBusDict.stringVariant({});
     if (value.signature != DBusSignature('a{sv}')) {
       return {};
     }
