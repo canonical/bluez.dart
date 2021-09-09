@@ -793,7 +793,9 @@ void main() {
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
     addTearDown(() async => await bluez.close());
-    var adapter = await bluez.addAdapter('hci0');
+    var adapter = await bluez.addAdapter(
+      'hci0',
+    );
     await bluez.addDevice(adapter, address: 'DE:71:CE:00:00:01');
     await bluez.addDevice(adapter, address: 'DE:71:CE:00:00:02');
     await bluez.addDevice(adapter, address: 'DE:71:CE:00:00:03');
@@ -863,7 +865,7 @@ void main() {
     var bluez = MockBlueZServer(clientAddress);
     await bluez.start();
     addTearDown(() async => await bluez.close());
-    var adapter = await bluez.addAdapter('hci0');
+    var adapter = await bluez.addAdapter('hci0', address: 'AD:A9:7E:F0:00:01');
     await bluez.addDevice(adapter,
         address: 'DE:71:CE:00:00:01',
         addressType: 'public',
@@ -901,6 +903,7 @@ void main() {
 
     expect(client.devices, hasLength(1));
     var device = client.devices[0];
+    expect(device.adapter.address, equals('AD:A9:7E:F0:00:01'));
     expect(device.address, equals('DE:71:CE:00:00:01'));
     expect(device.addressType, equals(BlueZAddressType.public));
     expect(device.alias, equals('Test Device Alias'));

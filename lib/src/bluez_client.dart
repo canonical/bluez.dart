@@ -579,10 +579,10 @@ class BlueZDevice {
   }
 
   /// The adapter this device belongs to.
-  BlueZAdapter? get adapter {
+  BlueZAdapter get adapter {
     var objectPath =
-        _object.getObjectPathProperty(_deviceInterfaceName, 'Adapter');
-    return objectPath != null ? _client._getAdapter(objectPath) : null;
+        _object.getObjectPathProperty(_deviceInterfaceName, 'Adapter')!;
+    return _client._getAdapter(objectPath)!;
   }
 
   /// MAC address of this device.
