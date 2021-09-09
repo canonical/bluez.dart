@@ -1,4 +1,5 @@
 [![Pub Package](https://img.shields.io/pub/v/bluez.svg)](https://pub.dev/packages/bluez)
+[![codecov](https://codecov.io/gh/canonical/bluez.dart/branch/main/graph/badge.svg?token=95SGM9BIF5)](https://codecov.io/gh/canonical/bluez.dart)
 
 Provides a client to connect to [BlueZ](http://www.bluez.org/) - the Linux Bluetooth stack.
 
