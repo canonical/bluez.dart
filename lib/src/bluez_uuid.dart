@@ -132,5 +132,5 @@ class BlueZUUID {
       other.value[15] == value[15];
 
   @override
-  int get hashCode => value.hashCode;
+  int get hashCode => value.fold(17, (prev, value) => 37 * prev + value);
 }
