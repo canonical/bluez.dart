@@ -425,8 +425,8 @@ class MockBlueZServer extends DBusClient {
       bool servicesResolved = false,
       bool trusted = false,
       int txPower = 0,
-      bool wakeAllowed = false,
-      List<String> uuids = const []}) async {
+      List<String> uuids = const [],
+      bool wakeAllowed = false}) async {
     var device = MockBlueZDeviceObject(adapter,
         address: address,
         addressType: addressType,
@@ -866,16 +866,34 @@ void main() {
     var adapter = await bluez.addAdapter('hci0');
     await bluez.addDevice(adapter,
         address: 'DE:71:CE:00:00:01',
+        addressType: 'public',
         alias: 'Test Device Alias',
+        appearance: 0x03C1,
+        blocked: true,
         class_: 999,
+        connected: true,
+        icon: 'keyboard',
+        legacyPairing: true,
+        manufacturerData: {
+          0: DBusArray.byte([1, 2, 3]),
+          1: DBusArray.byte([4, 5, 6])
+        },
         modalias: 'usb:device1',
         name: 'Test Device',
+        paired: true,
         rssi: 123,
+        serviceData: {
+          '00000001-0000-1000-8000-00805f9b34fb': DBusArray.byte([1, 2, 3]),
+          '00000002-0000-1000-8000-00805f9b34fb': DBusArray.byte([4, 5, 6])
+        },
+        servicesResolved: true,
+        trusted: true,
         txPower: 456,
         uuids: [
           '00000001-0000-1000-8000-00805f9b34fb',
           '00000002-0000-1000-8000-00805f9b34fb'
-        ]);
+        ],
+        wakeAllowed: true);
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
@@ -886,12 +904,41 @@ void main() {
     expect(device.address, equals('DE:71:CE:00:00:01'));
     expect(device.addressType, equals(BlueZAddressType.public));
     expect(device.alias, equals('Test Device Alias'));
+    expect(device.appearance, equals(0x03C1));
+    expect(device.blocked, isTrue);
+    expect(device.connected, isTrue);
     expect(device.deviceClass, equals(999));
+    expect(device.icon, equals('keyboard'));
+    expect(device.legacyPairing, isTrue);
+    expect(
+        device.manufacturerData,
+        equals({
+          BlueZManufacturerId(0): [1, 2, 3],
+          BlueZManufacturerId(1): [4, 5, 6]
+        }));
     expect(device.modalias, equals('usb:device1'));
     expect(device.name, equals('Test Device'));
+    expect(device.paired, isTrue);
     expect(device.rssi, equals(123));
+    expect(
+        device.serviceData,
+        equals({
+          BlueZUUID.fromString('00000001-0000-1000-8000-00805f9b34fb'): [
+            1,
+            2,
+            3
+          ],
+          BlueZUUID.fromString('00000002-0000-1000-8000-00805f9b34fb'): [
+            4,
+            5,
+            6
+          ]
+        }));
+    expect(device.servicesResolved, isTrue);
+    expect(device.trusted, isTrue);
     expect(device.txPower, equals(456));
     expect(device.uuids, equals([BlueZUUID.short(1), BlueZUUID.short(2)]));
+    expect(device.wakeAllowed, isTrue);
   });
 
   test('device set properties', () async {
