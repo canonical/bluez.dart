@@ -511,6 +511,8 @@ void main() {
         throwsFormatException);
     expect(() => BlueZUUID.fromString('4d2-0-1000-8000-805f9b34fb'),
         throwsFormatException);
+    expect(() => BlueZUUID.fromString('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'),
+        throwsFormatException);
 
     // Different constructors.
     expect(
