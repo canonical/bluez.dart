@@ -593,10 +593,17 @@ void main() {
     addTearDown(() async => await bluez.close());
     await bluez.addAdapter('hci0',
         address: 'AD:A9:7E:F0:00:01',
+        addressType: 'public',
         alias: 'Test Adapter Alias',
         class_: 777,
-        name: 'Test Adapter',
+        discoverable: true,
+        discoverableTimeout: 60,
+        discovering: true,
         modalias: 'usb:adapter1',
+        name: 'Test Adapter',
+        pairable: true,
+        pairableTimeout: 120,
+        powered: true,
         roles: [
           'role1',
           'role2'
@@ -616,8 +623,14 @@ void main() {
     expect(adapter.addressType, equals(BlueZAddressType.public));
     expect(adapter.alias, equals('Test Adapter Alias'));
     expect(adapter.deviceClass, equals(777));
+    expect(adapter.discoverable, isTrue);
+    expect(adapter.discoverableTimeout, equals(60));
+    expect(adapter.discovering, isTrue);
     expect(adapter.modalias, equals('usb:adapter1'));
     expect(adapter.name, equals('Test Adapter'));
+    expect(adapter.pairable, isTrue);
+    expect(adapter.pairableTimeout, equals(120));
+    expect(adapter.powered, isTrue);
     expect(adapter.roles, equals(['role1', 'role2']));
     expect(adapter.uuids, equals([BlueZUUID.short(1), BlueZUUID.short(2)]));
   });
