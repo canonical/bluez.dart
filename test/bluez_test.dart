@@ -1258,11 +1258,15 @@ void main() {
     expect(service.characteristics[2].value, equals([0xde, 0xad, 0xbe, 0xef]));
     expect(service.characteristics[2].descriptors, isEmpty);
 
-    var data = await service.characteristics[2].readValue(offset: 2);
+    var data = await service.characteristics[2].readValue();
+    expect(data, equals([0xde, 0xad, 0xbe, 0xef]));
+    data = await service.characteristics[2].readValue(offset: 2);
     expect(data, equals([0xbe, 0xef]));
 
-    await service.characteristics[2].writeValue([0xff, 0xff], offset: 1);
-    expect(c.value, equals([0xde, 0xff, 0xff, 0xef]));
+    await service.characteristics[2].writeValue([0xaa]);
+    expect(c.value, equals([0xaa, 0xad, 0xbe, 0xef]));
+    await service.characteristics[2].writeValue([0xbb, 0xcc], offset: 1);
+    expect(c.value, equals([0xaa, 0xbb, 0xcc, 0xef]));
   });
 
   test('gatt descriptors', () async {
@@ -1306,10 +1310,14 @@ void main() {
     expect(
         characteristic.descriptors[2].value, equals([0xde, 0xad, 0xbe, 0xef]));
 
-    var data = await characteristic.descriptors[2].readValue(offset: 2);
+    var data = await characteristic.descriptors[2].readValue();
+    expect(data, equals([0xde, 0xad, 0xbe, 0xef]));
+    data = await characteristic.descriptors[2].readValue(offset: 2);
     expect(data, equals([0xbe, 0xef]));
 
-    await characteristic.descriptors[2].writeValue([0xff, 0xff], offset: 1);
-    expect(descriptor.value, equals([0xde, 0xff, 0xff, 0xef]));
+    await characteristic.descriptors[2].writeValue([0xaa]);
+    expect(descriptor.value, equals([0xaa, 0xad, 0xbe, 0xef]));
+    await characteristic.descriptors[2].writeValue([0xbb, 0xcc], offset: 1);
+    expect(descriptor.value, equals([0xaa, 0xbb, 0xcc, 0xef]));
   });
 }
