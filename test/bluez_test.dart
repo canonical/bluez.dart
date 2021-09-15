@@ -327,6 +327,24 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
           'Value': DBusArray.byte(value)
         }
       };
+
+  @override
+  Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
+    if (methodCall.interface != 'org.bluez.GattCharacteristic1') {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+
+    switch (methodCall.name) {
+      case 'ReadValue':
+        var options = (methodCall.values[0] as DBusDict).children.map((key,
+                value) =>
+            MapEntry((key as DBusString).value, (value as DBusVariant).value));
+        var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
+        return DBusMethodSuccessResponse([DBusArray.byte(value.skip(offset))]);
+      default:
+        return DBusMethodErrorResponse.unknownMethod();
+    }
+  }
 }
 
 class MockBlueZGattDescriptorObject extends MockBlueZObject {
@@ -350,6 +368,24 @@ class MockBlueZGattDescriptorObject extends MockBlueZObject {
           'Value': DBusArray.byte(value)
         }
       };
+
+  @override
+  Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
+    if (methodCall.interface != 'org.bluez.GattDescriptor1') {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+
+    switch (methodCall.name) {
+      case 'ReadValue':
+        var options = (methodCall.values[0] as DBusDict).children.map((key,
+                value) =>
+            MapEntry((key as DBusString).value, (value as DBusVariant).value));
+        var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
+        return DBusMethodSuccessResponse([DBusArray.byte(value.skip(offset))]);
+      default:
+        return DBusMethodErrorResponse.unknownMethod();
+    }
+  }
 }
 
 class MockBlueZServer extends DBusClient {
@@ -1197,6 +1233,9 @@ void main() {
         }));
     expect(service.characteristics[2].value, equals([0xde, 0xad, 0xbe, 0xef]));
     expect(service.characteristics[2].descriptors, isEmpty);
+
+    var data = await service.characteristics[2].readValue(offset: 2);
+    expect(data, equals([0xbe, 0xef]));
   });
 
   test('gatt descriptors', () async {
@@ -1239,5 +1278,8 @@ void main() {
     expect(characteristic.descriptors[2].uuid, equals(BlueZUUID.short(0xc)));
     expect(
         characteristic.descriptors[2].value, equals([0xde, 0xad, 0xbe, 0xef]));
+
+    var data = await characteristic.descriptors[2].readValue(offset: 2);
+    expect(data, equals([0xbe, 0xef]));
   });
 }
