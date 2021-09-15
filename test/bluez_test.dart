@@ -301,7 +301,7 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
   final bool notifyAcquired;
   final bool notifying;
   final bool writeAcquired;
-  final List<int> value;
+  final value = <int>[];
   final String uuid;
 
   MockBlueZGattCharacteristicObject(this.service, this.id,
@@ -310,10 +310,12 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
       this.notifying = false,
       this.writeAcquired = false,
       required this.uuid,
-      this.value = const []})
+      List<int> value = const []})
       : super(DBusObjectPath(service.path.value +
             '/char' +
-            id.toRadixString(16).padLeft(4, '0')));
+            id.toRadixString(16).padLeft(4, '0'))) {
+    this.value.addAll(value);
+  }
 
   @override
   Map<String, Map<String, DBusValue>> get interfacesAndProperties => {
@@ -341,6 +343,17 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
             MapEntry((key as DBusString).value, (value as DBusVariant).value));
         var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
         return DBusMethodSuccessResponse([DBusArray.byte(value.skip(offset))]);
+      case 'WriteValue':
+        var data = (methodCall.values[0] as DBusArray)
+            .children
+            .map((value) => (value as DBusByte).value);
+        var options = (methodCall.values[1] as DBusDict).children.map((key,
+                value) =>
+            MapEntry((key as DBusString).value, (value as DBusVariant).value));
+        var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
+        value.removeRange(offset, offset + data.length);
+        value.insertAll(offset, data);
+        return DBusMethodSuccessResponse();
       default:
         return DBusMethodErrorResponse.unknownMethod();
     }
@@ -382,6 +395,17 @@ class MockBlueZGattDescriptorObject extends MockBlueZObject {
             MapEntry((key as DBusString).value, (value as DBusVariant).value));
         var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
         return DBusMethodSuccessResponse([DBusArray.byte(value.skip(offset))]);
+      case 'WriteValue':
+        var data = (methodCall.values[0] as DBusArray)
+            .children
+            .map((value) => (value as DBusByte).value);
+        var options = (methodCall.values[1] as DBusDict).children.map((key,
+                value) =>
+            MapEntry((key as DBusString).value, (value as DBusVariant).value));
+        var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
+        value.removeRange(offset, offset + data.length);
+        value.insertAll(offset, data);
+        return DBusMethodSuccessResponse();
       default:
         return DBusMethodErrorResponse.unknownMethod();
     }
@@ -1175,7 +1199,7 @@ void main() {
         uuid: '0000000a-0000-1000-8000-00805f9b34fb');
     await bluez.addCharacteristic(s, 2,
         uuid: '0000000b-0000-1000-8000-00805f9b34fb');
-    await bluez.addCharacteristic(s, 3,
+    var c = await bluez.addCharacteristic(s, 3,
         flags: [
           'broadcast',
           'read',
@@ -1236,6 +1260,9 @@ void main() {
 
     var data = await service.characteristics[2].readValue(offset: 2);
     expect(data, equals([0xbe, 0xef]));
+
+    await service.characteristics[2].writeValue([0xff, 0xff], offset: 1);
+    expect(c.value, equals([0xde, 0xff, 0xff, 0xef]));
   });
 
   test('gatt descriptors', () async {
@@ -1258,7 +1285,7 @@ void main() {
         uuid: '0000000a-0000-1000-8000-00805f9b34fb');
     await bluez.addDescriptor(c, 2,
         uuid: '0000000b-0000-1000-8000-00805f9b34fb');
-    await bluez.addDescriptor(c, 3,
+    var descriptor = await bluez.addDescriptor(c, 3,
         value: [0xde, 0xad, 0xbe, 0xef],
         uuid: '0000000c-0000-1000-8000-00805f9b34fb');
 
@@ -1281,5 +1308,8 @@ void main() {
 
     var data = await characteristic.descriptors[2].readValue(offset: 2);
     expect(data, equals([0xbe, 0xef]));
+
+    await characteristic.descriptors[2].writeValue([0xff, 0xff], offset: 1);
+    expect(descriptor.value, equals([0xde, 0xff, 0xff, 0xef]));
   });
 }
