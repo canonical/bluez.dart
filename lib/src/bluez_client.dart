@@ -376,6 +376,17 @@ class BlueZGattAcquireWriteResult {
   const BlueZGattAcquireWriteResult(this.socket, this.mtu);
 }
 
+/// Result of a [BlueZGattCharacteristic.acquireNotify] call.
+class BlueZGattAcquireNotifyResult {
+  /// Socket that streams values from the device.
+  final RawSocket socket;
+
+  /// The maximum number of bytes allowed in each read from [socket].
+  final int mtu;
+
+  const BlueZGattAcquireNotifyResult(this.socket, this.mtu);
+}
+
 /// A characteristic of a GATT service.
 class BlueZGattCharacteristic {
   final String _gattCharacteristicInterfaceName =
@@ -548,6 +559,18 @@ class BlueZGattCharacteristic {
     var handle = (result.values[0] as DBusUnixFd).handle;
     var mtu = (result.values[1] as DBusUint16).value;
     return BlueZGattAcquireWriteResult(handle.toRawSocket(), mtu);
+  }
+
+  /// Acquire a [ResourceHandle] for receiving notifications from this characterisitic.
+  /// To release the lock close the returned socket.
+  Future<BlueZGattAcquireNotifyResult> acquireNotify() async {
+    var options = <String, DBusValue>{};
+    var result = await _object.callMethod(_gattCharacteristicInterfaceName,
+        'AcquireNotify', [DBusDict.stringVariant(options)],
+        replySignature: DBusSignature('hq'));
+    var handle = (result.values[0] as DBusUnixFd).handle;
+    var mtu = (result.values[1] as DBusUint16).value;
+    return BlueZGattAcquireNotifyResult(handle.toRawSocket(), mtu);
   }
 
   /// Starts a notification session from this characteristic if it supports value notifications or indications.
