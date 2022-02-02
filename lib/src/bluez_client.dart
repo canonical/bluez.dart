@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dbus/dbus.dart';
 
@@ -367,6 +368,17 @@ class BlueZGattService {
       _client._getGattCharacteristics(_object.path);
 }
 
+/// Result of a [BlueZGattCharacteristic.acquireWrite] call.
+class BlueZGattAcquireWriteResult {
+  /// File object that writes to the GATT characteristic.
+  final RandomAccessFile file;
+
+  /// The maximum number of bytes allowed in each write to [file].
+  final int mtu;
+
+  const BlueZGattAcquireWriteResult(this.file, this.mtu);
+}
+
 /// A characteristic of a GATT service.
 class BlueZGattCharacteristic {
   final String _gattCharacteristicInterfaceName =
@@ -453,7 +465,7 @@ class BlueZGattCharacteristic {
     return flags;
   }
 
-  // TODO(robert-ancell): Functions that require fd manipulation - StartNotify(), StopNotify(), AcquireNotify(), NotifyAcquired, Notifying, AcquireWrite(), WriteAcquired
+  // TODO(robert-ancell): Functions that require fd manipulation - StartNotify(), StopNotify(), AcquireNotify(), NotifyAcquired, Notifying, WriteAcquired
 
   /// The Gatt descriptors provided by this characteristic.
   List<BlueZGattDescriptor> get descriptors =>
@@ -504,6 +516,19 @@ class BlueZGattCharacteristic {
     await _object.callMethod(_gattCharacteristicInterfaceName, 'WriteValue',
         [DBusArray.byte(data), DBusDict.stringVariant(options)],
         replySignature: DBusSignature(''));
+  }
+
+  /// Acquire a [RandomAccessFile] for writing to this characterisitic.
+  /// Usage of [writeValue] will be locked causing it to return NotPermitted error.
+  /// To release the lock close the returned file.
+  Future<BlueZGattAcquireWriteResult> acquireWrite() async {
+    var options = <String, DBusValue>{};
+    var result = await _object.callMethod(_gattCharacteristicInterfaceName,
+        'AcquireWrite', [DBusDict.stringVariant(options)],
+        replySignature: DBusSignature('hq'));
+    var handle = (result.values[0] as DBusUnixFd).handle;
+    var mtu = (result.values[1] as DBusUint16).value;
+    return BlueZGattAcquireWriteResult(handle.toFile(), mtu);
   }
 }
 
