@@ -401,6 +401,12 @@ class BlueZGattCharacteristic {
       _object.getByteArrayProperty(_gattCharacteristicInterfaceName, 'Value') ??
       [];
 
+  /// True if if this characteristic has been acquired by any client using [acquireWrite].
+  bool get writeAcquired =>
+      _object.getBooleanProperty(
+          _gattCharacteristicInterfaceName, 'WriteAcquired') ??
+      false;
+
   /// Defines how this characteristic value can be used.
   Set<BlueZGattCharacteristicFlag> get flags {
     var flags = <BlueZGattCharacteristicFlag>{};
@@ -465,7 +471,7 @@ class BlueZGattCharacteristic {
     return flags;
   }
 
-  // TODO(robert-ancell): Functions that require fd manipulation - StartNotify(), StopNotify(), AcquireNotify(), NotifyAcquired, Notifying, WriteAcquired
+  // TODO(robert-ancell): Functions that require fd manipulation - StartNotify(), StopNotify(), AcquireNotify(), NotifyAcquired, Notifying
 
   /// The Gatt descriptors provided by this characteristic.
   List<BlueZGattDescriptor> get descriptors =>

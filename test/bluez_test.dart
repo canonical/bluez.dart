@@ -562,7 +562,7 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
   final int mtu;
   final bool notifyAcquired;
   final bool notifying;
-  final bool writeAcquired;
+  var writeAcquired = false;
   final value = <int>[];
   final String uuid;
   File? writtenData;
@@ -572,7 +572,6 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
       this.mtu = 0,
       this.notifyAcquired = false,
       this.notifying = false,
-      this.writeAcquired = false,
       required this.uuid,
       List<int> value = const []})
       : super(DBusObjectPath(service.path.value +
@@ -619,6 +618,10 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
         value.insertAll(offset, data);
         return DBusMethodSuccessResponse();
       case 'AcquireWrite':
+        if (writeAcquired) {
+          return DBusMethodErrorResponse('org.bluez.Error.Failed');
+        }
+        await changeProperties(writeAcquired: true);
         writtenData ??= await openTempFile();
         var handle = ResourceHandle.fromFile(
             await writtenData!.open(mode: FileMode.write));
@@ -626,6 +629,16 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
       default:
         return DBusMethodErrorResponse.unknownMethod();
     }
+  }
+
+  Future<void> changeProperties({bool? writeAcquired}) async {
+    var changedProperties = <String, DBusValue>{};
+    if (writeAcquired != null) {
+      this.writeAcquired = writeAcquired;
+      changedProperties['WriteAcquired'] = DBusBoolean(writeAcquired);
+    }
+    await emitPropertiesChanged('org.bluez.GattCharacteristic1',
+        changedProperties: changedProperties);
   }
 
   Future<String> getWrittenData() async {
@@ -832,7 +845,6 @@ class MockBlueZServer extends DBusClient {
       int mtu = 0,
       bool notifyAcquired = false,
       bool notifying = false,
-      bool writeAcquired = false,
       List<int> value = const [],
       required String uuid}) async {
     var characteristic = MockBlueZGattCharacteristicObject(service, id,
@@ -840,7 +852,6 @@ class MockBlueZServer extends DBusClient {
         mtu: mtu,
         notifyAcquired: notifyAcquired,
         notifying: notifying,
-        writeAcquired: writeAcquired,
         value: value,
         uuid: uuid);
     await registerObject(characteristic);
@@ -1957,6 +1968,7 @@ void main() {
     expect(service.characteristics, hasLength(1));
     var characteristic = service.characteristics[0];
     var result = await characteristic.acquireWrite();
+    expect(characteristic.writeAcquired, isTrue);
     expect(result.mtu, equals(23));
     result.file.writeStringSync('Hello world!');
     expect(await c.getWrittenData(), equals('Hello world!'));
