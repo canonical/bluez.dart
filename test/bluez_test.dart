@@ -1,9 +1,27 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:bluez/bluez.dart';
 import 'package:dbus/dbus.dart';
 import 'package:test/test.dart';
+
+Future<File> openTempFile() async {
+  var r = Random();
+  final randomChars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  while (true) {
+    var path = Directory.systemTemp.path + '/bluez-dart-test-';
+    for (var i = 0; i < 8; i++) {
+      path += randomChars[r.nextInt(randomChars.length)];
+    }
+    var file = File(path);
+    if (await file.exists()) {
+      continue;
+    }
+
+    return file;
+  }
+}
 
 class MockBlueZObject extends DBusObject {
   MockBlueZObject(DBusObjectPath path) : super(path);
@@ -541,14 +559,17 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
 
   final int id;
   final List<String> flags;
+  final int mtu;
   final bool notifyAcquired;
   final bool notifying;
   final bool writeAcquired;
   final value = <int>[];
   final String uuid;
+  File? writtenData;
 
   MockBlueZGattCharacteristicObject(this.service, this.id,
       {this.flags = const [],
+      this.mtu = 0,
       this.notifyAcquired = false,
       this.notifying = false,
       this.writeAcquired = false,
@@ -597,9 +618,24 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
         value.removeRange(offset, offset + data.length);
         value.insertAll(offset, data);
         return DBusMethodSuccessResponse();
+      case 'AcquireWrite':
+        writtenData ??= await openTempFile();
+        var handle = ResourceHandle.fromFile(
+            await writtenData!.open(mode: FileMode.write));
+        return DBusMethodSuccessResponse([DBusUnixFd(handle), DBusUint16(mtu)]);
       default:
         return DBusMethodErrorResponse.unknownMethod();
     }
+  }
+
+  Future<String> getWrittenData() async {
+    if (writtenData == null) {
+      return '';
+    }
+    var data = writtenData!.readAsString();
+    await writtenData!.delete();
+    writtenData = null;
+    return data;
   }
 }
 
@@ -793,6 +829,7 @@ class MockBlueZServer extends DBusClient {
   Future<MockBlueZGattCharacteristicObject> addCharacteristic(
       MockBlueZGattServiceObject service, int id,
       {List<String> flags = const [],
+      int mtu = 0,
       bool notifyAcquired = false,
       bool notifying = false,
       bool writeAcquired = false,
@@ -800,6 +837,7 @@ class MockBlueZServer extends DBusClient {
       required String uuid}) async {
     var characteristic = MockBlueZGattCharacteristicObject(service, id,
         flags: flags,
+        mtu: mtu,
         notifyAcquired: notifyAcquired,
         notifying: notifying,
         writeAcquired: writeAcquired,
@@ -1889,6 +1927,39 @@ void main() {
     expect(descriptor.value, equals([0xaa, 0xad, 0xbe, 0xef]));
     await characteristic.descriptors[2].writeValue([0xbb, 0xcc], offset: 1);
     expect(descriptor.value, equals([0xaa, 0xbb, 0xcc, 0xef]));
+  });
+
+  test('gatt acquire write', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    var d = await bluez.addDevice(adapter,
+        address: 'DE:71:CE:00:00:01', servicesResolved: true);
+    var s = await bluez.addService(d, 1,
+        uuid: '00000001-0000-1000-8000-00805f9b34fb');
+    var c = await bluez.addCharacteristic(s, 1,
+        uuid: '00000002-0000-1000-8000-00805f9b34fb', mtu: 23);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+    expect(device.gattServices, hasLength(1));
+    var service = device.gattServices[0];
+    expect(service.characteristics, hasLength(1));
+    var characteristic = service.characteristics[0];
+    var result = await characteristic.acquireWrite();
+    expect(result.mtu, equals(23));
+    result.file.writeStringSync('Hello world!');
+    expect(await c.getWrittenData(), equals('Hello world!'));
   });
 
   test('pair - no auth', () async {
