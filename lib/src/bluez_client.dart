@@ -389,6 +389,15 @@ class BlueZGattCharacteristic {
 
   BlueZGattCharacteristic(this._client, this._object);
 
+  /// Stream of property names as their values change.
+  Stream<List<String>> get propertiesChanged {
+    var interface = _object.interfaces[_gattCharacteristicInterfaceName];
+    if (interface == null) {
+      throw 'BlueZ characteristic missing $_gattCharacteristicInterfaceName interface';
+    }
+    return interface.propertiesChangedStreamController.stream;
+  }
+
   // TODO(robert-ancell): Includes
 
   /// Unique ID for this characteristic.
@@ -396,7 +405,7 @@ class BlueZGattCharacteristic {
       _object.getStringProperty(_gattCharacteristicInterfaceName, 'UUID') ??
           '');
 
-  /// Cached value of this characteristic, updated when [readValue] is called.
+  /// Cached value of this characteristic, updated when [readValue] is called or in a notification session triggered by [startNotify].
   List<int> get value =>
       _object.getByteArrayProperty(_gattCharacteristicInterfaceName, 'Value') ??
       [];
@@ -405,6 +414,12 @@ class BlueZGattCharacteristic {
   bool get writeAcquired =>
       _object.getBooleanProperty(
           _gattCharacteristicInterfaceName, 'WriteAcquired') ??
+      false;
+
+  /// True, if notifications or indications on this characteristic are currently enabled.
+  bool get notifying =>
+      _object.getBooleanProperty(
+          _gattCharacteristicInterfaceName, 'Notifying') ??
       false;
 
   /// Defines how this characteristic value can be used.
@@ -471,7 +486,7 @@ class BlueZGattCharacteristic {
     return flags;
   }
 
-  // TODO(robert-ancell): Functions that require fd manipulation - StartNotify(), StopNotify(), AcquireNotify(), NotifyAcquired, Notifying
+  // TODO(robert-ancell): Functions that require fd manipulation - AcquireNotify(), NotifyAcquired
 
   /// The Gatt descriptors provided by this characteristic.
   List<BlueZGattDescriptor> get descriptors =>
@@ -535,6 +550,20 @@ class BlueZGattCharacteristic {
     var handle = (result.values[0] as DBusUnixFd).handle;
     var mtu = (result.values[1] as DBusUint16).value;
     return BlueZGattAcquireWriteResult(handle.toFile(), mtu);
+  }
+
+  /// Starts a notification session from this characteristic if it supports value notifications or indications.
+  Future<void> startNotify() async {
+    await _object.callMethod(
+        _gattCharacteristicInterfaceName, 'StartNotify', [],
+        replySignature: DBusSignature(''));
+  }
+
+  /// Cancel any previous [startNotify] transaction.
+  /// Note that notifications from a characteristic are shared between sessions thus calling stopNotify will release a single session.
+  Future<void> stopNotify() async {
+    await _object.callMethod(_gattCharacteristicInterfaceName, 'StopNotify', [],
+        replySignature: DBusSignature(''));
   }
 }
 

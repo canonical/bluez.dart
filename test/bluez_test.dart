@@ -561,9 +561,9 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
   final List<String> flags;
   final int mtu;
   final bool notifyAcquired;
-  final bool notifying;
+  var notifying = false;
   var writeAcquired = false;
-  final value = <int>[];
+  var value = <int>[];
   final String uuid;
   File? writtenData;
 
@@ -571,7 +571,6 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
       {this.flags = const [],
       this.mtu = 0,
       this.notifyAcquired = false,
-      this.notifying = false,
       required this.uuid,
       List<int> value = const []})
       : super(DBusObjectPath(service.path.value +
@@ -626,19 +625,48 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
         var handle = ResourceHandle.fromFile(
             await writtenData!.open(mode: FileMode.write));
         return DBusMethodSuccessResponse([DBusUnixFd(handle), DBusUint16(mtu)]);
+      case 'StartNotify':
+        if (notifying) {
+          return DBusMethodErrorResponse('org.bluez.Error.InProgress');
+        }
+        await changeProperties(notifying: true);
+        return DBusMethodSuccessResponse();
+      case 'StopNotify':
+        if (!notifying) {
+          return DBusMethodSuccessResponse();
+        }
+        await changeProperties(notifying: false);
+        return DBusMethodSuccessResponse();
       default:
         return DBusMethodErrorResponse.unknownMethod();
     }
   }
 
-  Future<void> changeProperties({bool? writeAcquired}) async {
+  Future<void> changeProperties(
+      {bool? notifying, List<int>? value, bool? writeAcquired}) async {
     var changedProperties = <String, DBusValue>{};
+    if (notifying != null) {
+      this.notifying = notifying;
+      changedProperties['Notifying'] = DBusBoolean(notifying);
+    }
+    if (value != null) {
+      this.value = value;
+      changedProperties['Value'] = DBusArray.byte(value);
+    }
     if (writeAcquired != null) {
       this.writeAcquired = writeAcquired;
       changedProperties['WriteAcquired'] = DBusBoolean(writeAcquired);
     }
     await emitPropertiesChanged('org.bluez.GattCharacteristic1',
         changedProperties: changedProperties);
+  }
+
+  Future<void> setValue(List<int> value) async {
+    if (notifying) {
+      await changeProperties(value: value);
+    } else {
+      value = value;
+    }
   }
 
   Future<String> getWrittenData() async {
@@ -844,14 +872,12 @@ class MockBlueZServer extends DBusClient {
       {List<String> flags = const [],
       int mtu = 0,
       bool notifyAcquired = false,
-      bool notifying = false,
       List<int> value = const [],
       required String uuid}) async {
     var characteristic = MockBlueZGattCharacteristicObject(service, id,
         flags: flags,
         mtu: mtu,
         notifyAcquired: notifyAcquired,
-        notifying: notifying,
         value: value,
         uuid: uuid);
     await registerObject(characteristic);
@@ -1886,6 +1912,47 @@ void main() {
     expect(c.value, equals([0xaa, 0xad, 0xbe, 0xef]));
     await service.characteristics[2].writeValue([0xbb, 0xcc], offset: 1);
     expect(c.value, equals([0xaa, 0xbb, 0xcc, 0xef]));
+  });
+
+  test('gatt notify', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    var d = await bluez.addDevice(adapter, address: 'DE:71:CE:00:00:01');
+    var s = await bluez.addService(d, 1,
+        uuid: '00000001-0000-1000-8000-00805f9b34fb');
+    var c = await bluez.addCharacteristic(s, 1,
+        uuid: '0000000a-0000-1000-8000-00805f9b34fb', value: [0x12, 0x34]);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+    expect(device.gattServices, hasLength(1));
+    var service = device.gattServices[0];
+    expect(service.characteristics, hasLength(1));
+    var characteristic = service.characteristics[0];
+
+    expect(characteristic.value, equals([0x12, 0x34]));
+    expect(characteristic.notifying, isFalse);
+    await characteristic.startNotify();
+    expect(characteristic.notifying, isTrue);
+    characteristic.propertiesChanged
+        .where((properties) => properties.contains('Value'))
+        .listen(expectAsync1((properties) {
+      expect(characteristic.value, equals([0xf0, 0x0d]));
+    }));
+    await c.setValue([0xf0, 0x0d]);
+    await characteristic.stopNotify();
+    expect(characteristic.notifying, isFalse);
   });
 
   test('gatt descriptors', () async {
