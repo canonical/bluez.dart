@@ -416,6 +416,12 @@ class BlueZGattCharacteristic {
           _gattCharacteristicInterfaceName, 'WriteAcquired') ??
       false;
 
+  /// True if if this characteristic has been acquired by any client using [acquireNotify].
+  bool get notifyAcquired =>
+      _object.getBooleanProperty(
+          _gattCharacteristicInterfaceName, 'NotifyAcquired') ??
+      false;
+
   /// True, if notifications or indications on this characteristic are currently enabled.
   bool get notifying =>
       _object.getBooleanProperty(
@@ -485,8 +491,6 @@ class BlueZGattCharacteristic {
     }
     return flags;
   }
-
-  // TODO(robert-ancell): Functions that require fd manipulation - AcquireNotify(), NotifyAcquired
 
   /// The Gatt descriptors provided by this characteristic.
   List<BlueZGattDescriptor> get descriptors =>

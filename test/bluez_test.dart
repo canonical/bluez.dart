@@ -560,17 +560,17 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
   final int id;
   final List<String> flags;
   final int mtu;
-  final bool notifyAcquired;
+  var notifyAcquired = false;
   var notifying = false;
   var writeAcquired = false;
   var value = <int>[];
   final String uuid;
   File? writtenData;
+  File? notifyData;
 
   MockBlueZGattCharacteristicObject(this.service, this.id,
       {this.flags = const [],
       this.mtu = 0,
-      this.notifyAcquired = false,
       required this.uuid,
       List<int> value = const []})
       : super(DBusObjectPath(service.path.value +
@@ -643,8 +643,15 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
   }
 
   Future<void> changeProperties(
-      {bool? notifying, List<int>? value, bool? writeAcquired}) async {
+      {bool? notifyAcquired,
+      bool? notifying,
+      List<int>? value,
+      bool? writeAcquired}) async {
     var changedProperties = <String, DBusValue>{};
+    if (notifyAcquired != null) {
+      this.notifyAcquired = notifyAcquired;
+      changedProperties['NotifyAcquired'] = DBusBoolean(notifyAcquired);
+    }
     if (notifying != null) {
       this.notifying = notifying;
       changedProperties['Notifying'] = DBusBoolean(notifying);
@@ -667,6 +674,10 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
     } else {
       value = value;
     }
+  }
+
+  Future<void> setNotifyAcquired(bool notifyAcquired) async {
+    await changeProperties(notifyAcquired: notifyAcquired);
   }
 
   Future<String> getWrittenData() async {
@@ -871,15 +882,10 @@ class MockBlueZServer extends DBusClient {
       MockBlueZGattServiceObject service, int id,
       {List<String> flags = const [],
       int mtu = 0,
-      bool notifyAcquired = false,
       List<int> value = const [],
       required String uuid}) async {
     var characteristic = MockBlueZGattCharacteristicObject(service, id,
-        flags: flags,
-        mtu: mtu,
-        notifyAcquired: notifyAcquired,
-        value: value,
-        uuid: uuid);
+        flags: flags, mtu: mtu, value: value, uuid: uuid);
     await registerObject(characteristic);
     return characteristic;
   }
@@ -2097,6 +2103,44 @@ void main() {
     expect(result.mtu, equals(23));
     result.file.writeStringSync('Hello world!');
     expect(await c.getWrittenData(), equals('Hello world!'));
+  });
+
+  test('gatt acquire notify', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    var d = await bluez.addDevice(adapter, address: 'DE:71:CE:00:00:01');
+    var s = await bluez.addService(d, 1,
+        uuid: '00000001-0000-1000-8000-00805f9b34fb');
+    var c = await bluez.addCharacteristic(s, 1,
+        uuid: '00000002-0000-1000-8000-00805f9b34fb');
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    // We can't currently do an acquire notify, but test that we can detect if another client does it.
+    // Seehttps://github.com/canonical/bluez.dart/issues/81
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+    expect(device.gattServices, hasLength(1));
+    var service = device.gattServices[0];
+    expect(service.characteristics, hasLength(1));
+    var characteristic = service.characteristics[0];
+
+    expect(characteristic.notifyAcquired, isFalse);
+    characteristic.propertiesChanged
+        .where((properties) => properties.contains('NotifyAcquired'))
+        .listen(expectAsync1((properties) {
+      expect(characteristic.notifyAcquired, isTrue);
+    }));
+    await c.setNotifyAcquired(true);
   });
 
   test('pair - no auth', () async {
