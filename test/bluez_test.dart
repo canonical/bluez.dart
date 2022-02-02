@@ -558,7 +558,7 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
   final String uuid;
   final _writtenDataCompleter = Completer<List<int>>();
   Future<List<int>> get writtenData => _writtenDataCompleter.future;
-  File? notifyData;
+  RawSocket? notifySocket;
 
   MockBlueZGattCharacteristicObject(this.service, this.id,
       {this.flags = const [],
@@ -619,6 +619,27 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
         socket = await RawSocket.connect(address, 0);
         var handle = ResourceHandle.fromRawSocket(socket);
         return DBusMethodSuccessResponse([DBusUnixFd(handle), DBusUint16(mtu)]);
+      case 'AcquireNotify':
+        if (notifyAcquired) {
+          return DBusMethodErrorResponse('org.bluez.Error.Failed');
+        }
+        await changeProperties(notifyAcquired: true);
+        var address = makeRandomUnixAddress();
+        RawSocket? socket;
+        var serverSocket = await RawServerSocket.bind(address, 0);
+        unawaited(serverSocket.first.then((childSocket) {
+          notifySocket = childSocket;
+          childSocket.listen((event) {
+            if (event == RawSocketEvent.closed) {
+              childSocket.close();
+              serverSocket.close();
+              socket?.close();
+            }
+          });
+        }));
+        socket = await RawSocket.connect(address, 0);
+        var handle = ResourceHandle.fromRawSocket(socket);
+        return DBusMethodSuccessResponse([DBusUnixFd(handle), DBusUint16(mtu)]);
       case 'StartNotify':
         if (notifying) {
           return DBusMethodErrorResponse('org.bluez.Error.InProgress');
@@ -665,13 +686,11 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
   Future<void> setValue(List<int> value) async {
     if (notifying) {
       await changeProperties(value: value);
+    } else if (notifySocket != null) {
+      notifySocket!.write(value);
     } else {
       value = value;
     }
-  }
-
-  Future<void> setNotifyAcquired(bool notifyAcquired) async {
-    await changeProperties(notifyAcquired: notifyAcquired);
   }
 }
 
@@ -2098,14 +2117,12 @@ void main() {
     var s = await bluez.addService(d, 1,
         uuid: '00000001-0000-1000-8000-00805f9b34fb');
     var c = await bluez.addCharacteristic(s, 1,
-        uuid: '00000002-0000-1000-8000-00805f9b34fb');
+        uuid: '00000002-0000-1000-8000-00805f9b34fb', mtu: 23);
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
     addTearDown(() async => await client.close());
 
-    // We can't currently do an acquire notify, but test that we can detect if another client does it.
-    // Seehttps://github.com/canonical/bluez.dart/issues/81
     expect(client.devices, hasLength(1));
     var device = client.devices[0];
     expect(device.gattServices, hasLength(1));
@@ -2114,12 +2131,16 @@ void main() {
     var characteristic = service.characteristics[0];
 
     expect(characteristic.notifyAcquired, isFalse);
-    characteristic.propertiesChanged
-        .where((properties) => properties.contains('NotifyAcquired'))
-        .listen(expectAsync1((properties) {
-      expect(characteristic.notifyAcquired, isTrue);
+    var result = await characteristic.acquireNotify();
+    expect(characteristic.notifyAcquired, isTrue);
+    expect(result.mtu, equals(23));
+    addTearDown(() async => await result.socket.close());
+    result.socket
+        .where((event) => event == RawSocketEvent.read)
+        .listen(expectAsync1((event) async {
+      expect(result.socket.read(), equals([0x12, 0x34, 0x56]));
     }));
-    await c.setNotifyAcquired(true);
+    await c.setValue([0x12, 0x34, 0x56]);
   });
 
   test('pair - no auth', () async {
