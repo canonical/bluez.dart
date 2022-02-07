@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.5
+
+* Only list as supporting Linux.
+* Fix BlueZUUID hashCode.
+* Make BlueZDevice.adapter non-nullable.
+
 ## 0.7.4
 
 * Detect BlueZ D-Bus exceptions and provide classes for them.
