@@ -13,9 +13,10 @@ void main() async {
 
   print('Searching for devices on ${adapter.name}...');
   for (var device in client.devices) {
-    print('  ${device.name}');
+    print('  ${device.address} ${device.name}');
   }
-  client.deviceAdded.listen((device) => print('  ${device.name}'));
+  client.deviceAdded
+      .listen((device) => print('  ${device.address} ${device.name}'));
 
   await adapter.startDiscovery();
 
