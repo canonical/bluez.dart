@@ -9,10 +9,39 @@ class MockBlueZObject extends DBusObject {
 }
 
 class MockBlueZManagerObject extends MockBlueZObject {
-  MockBlueZManagerObject() : super(DBusObjectPath('/org/bluez'));
+  final MockBlueZServer server;
+
+  MockBlueZManagerObject(this.server) : super(DBusObjectPath('/org/bluez'));
+
+  @override
+  Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
+    if (methodCall.interface != 'org.bluez.AgentManager1') {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+
+    switch (methodCall.name) {
+      case 'RegisterAgent':
+        server.agentAddress = methodCall.sender;
+        server.agentPath = methodCall.values[0] as DBusObjectPath;
+        server.agentCapability = (methodCall.values[1] as DBusString).value;
+        return DBusMethodSuccessResponse();
+      case 'RequestDefaultAgent':
+        server.agentIsDefault = true;
+        return DBusMethodSuccessResponse();
+      case 'UnregisterAgent':
+        server.agentAddress = null;
+        server.agentPath = null;
+        server.agentCapability = '';
+        server.agentIsDefault = false;
+        return DBusMethodSuccessResponse();
+      default:
+        return DBusMethodErrorResponse.unknownMethod();
+    }
+  }
 }
 
 class MockBlueZAdapterObject extends MockBlueZObject {
+  final MockBlueZServer server;
   final String deviceName;
 
   final String address;
@@ -31,7 +60,7 @@ class MockBlueZAdapterObject extends MockBlueZObject {
   final List<String> roles;
   final List<String> uuids;
 
-  MockBlueZAdapterObject(this.deviceName,
+  MockBlueZAdapterObject(this.server, this.deviceName,
       {this.address = '',
       this.addressType = 'public',
       this.alias = '',
@@ -148,13 +177,24 @@ class MockBlueZAdapterObject extends MockBlueZObject {
   }
 }
 
+enum MockBlueZDeviceAuthType {
+  none,
+  confirm,
+  confirmPinCode,
+  confirmPasskey,
+  requestPinCode,
+  requestPasskey
+}
+
 class MockBlueZDeviceObject extends MockBlueZObject {
   final MockBlueZAdapterObject adapter;
+  MockBlueZServer get server => adapter.server;
 
   final String address;
   final String addressType;
   String alias;
   final int appearance;
+  final MockBlueZDeviceAuthType authType;
   bool blocked;
   final int class_;
   bool connected;
@@ -164,6 +204,8 @@ class MockBlueZDeviceObject extends MockBlueZObject {
   final String modalias;
   final String name;
   bool paired;
+  final int? passkey;
+  final String? pinCode;
   int rssi;
   final Map<String, DBusValue> serviceData;
   final bool servicesResolved;
@@ -177,6 +219,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
       this.addressType = 'public',
       this.alias = '',
       this.appearance = 0,
+      this.authType = MockBlueZDeviceAuthType.none,
       this.blocked = false,
       this.class_ = 0,
       this.connected = false,
@@ -186,6 +229,8 @@ class MockBlueZDeviceObject extends MockBlueZObject {
       this.modalias = '',
       this.name = '',
       this.paired = false,
+      this.passkey,
+      this.pinCode,
       this.rssi = 0,
       this.serviceData = const {},
       this.servicesResolved = false,
@@ -248,7 +293,94 @@ class MockBlueZDeviceObject extends MockBlueZObject {
     return DBusMethodSuccessResponse();
   }
 
-  void changeProperties({bool? connected, bool? paired, int? rssi}) async {
+  @override
+  Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
+    if (methodCall.interface != 'org.bluez.Device1') {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+
+    switch (methodCall.name) {
+      case 'CancelPairing':
+        return DBusMethodSuccessResponse();
+      case 'Pair':
+        switch (authType) {
+          case MockBlueZDeviceAuthType.none:
+            await changeProperties(paired: true);
+            return DBusMethodSuccessResponse();
+          case MockBlueZDeviceAuthType.confirm:
+            if (server.agentAddress != null) {
+              await client!.callMethod(
+                  destination: server.agentAddress,
+                  path: server.agentPath!,
+                  interface: 'org.bluez.Agent1',
+                  name: 'RequestAuthorization',
+                  values: [path],
+                  replySignature: DBusSignature(''));
+              await changeProperties(paired: true);
+            }
+            return DBusMethodSuccessResponse();
+          case MockBlueZDeviceAuthType.confirmPinCode:
+            if (server.agentAddress != null) {
+              await client!.callMethod(
+                  destination: server.agentAddress,
+                  path: server.agentPath!,
+                  interface: 'org.bluez.Agent1',
+                  name: 'DisplayPinCode',
+                  values: [path, DBusString(pinCode!)],
+                  replySignature: DBusSignature(''));
+              await changeProperties(paired: true);
+            }
+            return DBusMethodSuccessResponse();
+          case MockBlueZDeviceAuthType.confirmPasskey:
+            if (server.agentAddress != null) {
+              await client!.callMethod(
+                  destination: server.agentAddress,
+                  path: server.agentPath!,
+                  interface: 'org.bluez.Agent1',
+                  name: 'RequestConfirmation',
+                  values: [path, DBusUint32(passkey!)],
+                  replySignature: DBusSignature(''));
+              await changeProperties(paired: true);
+            }
+            return DBusMethodSuccessResponse();
+          case MockBlueZDeviceAuthType.requestPinCode:
+            if (server.agentAddress != null) {
+              var result = await client!.callMethod(
+                  destination: server.agentAddress,
+                  path: server.agentPath!,
+                  interface: 'org.bluez.Agent1',
+                  name: 'RequestPinCode',
+                  values: [path],
+                  replySignature: DBusSignature('s'));
+              var pinCode = (result.values[0] as DBusString).value;
+              if (pinCode == this.pinCode) {
+                await changeProperties(paired: true);
+              }
+            }
+            return DBusMethodSuccessResponse();
+          case MockBlueZDeviceAuthType.requestPasskey:
+            if (server.agentAddress != null) {
+              var result = await client!.callMethod(
+                  destination: server.agentAddress,
+                  path: server.agentPath!,
+                  interface: 'org.bluez.Agent1',
+                  name: 'RequestPasskey',
+                  values: [path],
+                  replySignature: DBusSignature('u'));
+              var passkey = (result.values[0] as DBusUint32).value;
+              if (passkey == this.passkey) {
+                await changeProperties(paired: true);
+              }
+            }
+            return DBusMethodSuccessResponse();
+        }
+      default:
+        return DBusMethodErrorResponse.unknownMethod();
+    }
+  }
+
+  Future<void> changeProperties(
+      {bool? connected, bool? paired, int? rssi}) async {
     var changedProperties = <String, DBusValue>{};
     if (connected != null) {
       this.connected = connected;
@@ -415,6 +547,11 @@ class MockBlueZGattDescriptorObject extends MockBlueZObject {
 class MockBlueZServer extends DBusClient {
   late final DBusObject root;
 
+  String? agentAddress;
+  DBusObjectPath? agentPath;
+  String agentCapability = '';
+  bool agentIsDefault = false;
+
   MockBlueZServer(DBusAddress clientAddress) : super(clientAddress);
 
   Future<void> start() async {
@@ -422,7 +559,7 @@ class MockBlueZServer extends DBusClient {
     root = DBusObject(DBusObjectPath('/'), isObjectManager: true);
     await registerObject(root);
 
-    var manager = MockBlueZManagerObject();
+    var manager = MockBlueZManagerObject(this);
     await registerObject(manager);
   }
 
@@ -442,7 +579,7 @@ class MockBlueZServer extends DBusClient {
       bool powered = true,
       List<String> roles = const [],
       List<String> uuids = const []}) async {
-    var adapter = MockBlueZAdapterObject(deviceName,
+    var adapter = MockBlueZAdapterObject(this, deviceName,
         address: address,
         addressType: addressType,
         alias: alias,
@@ -471,6 +608,7 @@ class MockBlueZServer extends DBusClient {
       String addressType = 'public',
       String alias = '',
       int appearance = 0,
+      MockBlueZDeviceAuthType authType = MockBlueZDeviceAuthType.none,
       bool blocked = false,
       int class_ = 0,
       bool connected = false,
@@ -480,6 +618,8 @@ class MockBlueZServer extends DBusClient {
       String modalias = '',
       String name = '',
       bool paired = false,
+      int? passkey,
+      String? pinCode,
       int rssi = 0,
       Map<String, DBusValue> serviceData = const {},
       bool servicesResolved = false,
@@ -492,6 +632,7 @@ class MockBlueZServer extends DBusClient {
         addressType: addressType,
         alias: alias,
         appearance: appearance,
+        authType: authType,
         blocked: blocked,
         class_: class_,
         connected: connected,
@@ -501,6 +642,8 @@ class MockBlueZServer extends DBusClient {
         modalias: modalias,
         name: name,
         paired: paired,
+        passkey: passkey,
+        pinCode: pinCode,
         rssi: rssi,
         serviceData: serviceData,
         servicesResolved: servicesResolved,
@@ -553,6 +696,58 @@ class MockBlueZServer extends DBusClient {
         MockBlueZGattDescriptorObject(service, id, value: value, uuid: uuid);
     await registerObject(characteristic);
     return characteristic;
+  }
+}
+
+class TestAgent extends BlueZAgent {
+  final String? pinCode;
+  final int? passkey;
+  String? lastPinCode;
+  var pinCodeRequested = false;
+  int? lastPasskey;
+  var passkeyRequested = false;
+  var authRequested = false;
+
+  TestAgent({this.pinCode, this.passkey});
+
+  @override
+  Future<BlueZAgentPinCodeResponse> requestPinCode(BlueZDevice device) async {
+    pinCodeRequested = true;
+    if (pinCode != null) {
+      return BlueZAgentPinCodeResponse.success(pinCode!);
+    } else {
+      return BlueZAgentPinCodeResponse.rejected();
+    }
+  }
+
+  @override
+  Future<BlueZAgentResponse> displayPinCode(
+      BlueZDevice device, String pinCode) async {
+    lastPinCode = pinCode;
+    return BlueZAgentResponse.success();
+  }
+
+  @override
+  Future<BlueZAgentPasskeyResponse> requestPasskey(BlueZDevice device) async {
+    passkeyRequested = true;
+    if (passkey != null) {
+      return BlueZAgentPasskeyResponse.success(passkey!);
+    } else {
+      return BlueZAgentPasskeyResponse.rejected();
+    }
+  }
+
+  @override
+  Future<BlueZAgentResponse> requestConfirmation(
+      BlueZDevice device, int passkey) async {
+    lastPasskey = passkey;
+    return BlueZAgentResponse.success();
+  }
+
+  @override
+  Future<BlueZAgentResponse> requestAuthorization(BlueZDevice device) async {
+    authRequested = true;
+    return BlueZAgentResponse.success();
   }
 }
 
@@ -1121,7 +1316,7 @@ void main() {
       expect(device.rssi, equals(124));
     }));
 
-    d.changeProperties(connected: true, rssi: 124);
+    await d.changeProperties(connected: true, rssi: 124);
   });
 
   test('no gatt services', () async {
@@ -1319,5 +1514,205 @@ void main() {
     expect(descriptor.value, equals([0xaa, 0xad, 0xbe, 0xef]));
     await characteristic.descriptors[2].writeValue([0xbb, 0xcc], offset: 1);
     expect(descriptor.value, equals([0xaa, 0xbb, 0xcc, 0xef]));
+  });
+
+  test('pair - no auth', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    await bluez.addDevice(adapter,
+        address: 'DE:71:CE:00:00:01', authType: MockBlueZDeviceAuthType.none);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+
+    expect(device.paired, isFalse);
+    await device.pair();
+    expect(device.paired, isTrue);
+  });
+
+  test('pair - auth confirm', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    await bluez.addDevice(adapter,
+        address: 'DE:71:CE:00:00:01',
+        authType: MockBlueZDeviceAuthType.confirm);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    var agent = TestAgent();
+    await client.registerAgent(agent);
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+
+    expect(device.paired, isFalse);
+    await device.pair();
+    expect(device.paired, isTrue);
+    expect(agent.authRequested, isTrue);
+  });
+
+  test('pair - auth confirm pin code', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    await bluez.addDevice(adapter,
+        address: 'DE:71:CE:00:00:01',
+        authType: MockBlueZDeviceAuthType.confirmPinCode,
+        pinCode: 'abc123');
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    var agent = TestAgent();
+    await client.registerAgent(agent);
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+
+    expect(device.paired, isFalse);
+    await device.pair();
+    expect(device.paired, isTrue);
+    expect(agent.lastPinCode, equals('abc123'));
+  });
+
+  test('pair - auth request pin code', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    await bluez.addDevice(adapter,
+        address: 'DE:71:CE:00:00:01',
+        authType: MockBlueZDeviceAuthType.requestPinCode,
+        pinCode: 'abc123');
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    var agent = TestAgent(pinCode: 'abc123');
+    await client.registerAgent(agent);
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+
+    expect(device.paired, isFalse);
+    await device.pair();
+    expect(device.paired, isTrue);
+    expect(agent.pinCodeRequested, isTrue);
+  });
+
+  test('pair - auth confirm passkey', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    await bluez.addDevice(adapter,
+        address: 'DE:71:CE:00:00:01',
+        authType: MockBlueZDeviceAuthType.confirmPasskey,
+        passkey: 123456);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    var agent = TestAgent();
+    await client.registerAgent(agent);
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+
+    expect(device.paired, isFalse);
+    await device.pair();
+    expect(device.paired, isTrue);
+    expect(agent.lastPasskey, equals(123456));
+  });
+
+  test('pair - auth request passkey', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    await bluez.addDevice(adapter,
+        address: 'DE:71:CE:00:00:01',
+        authType: MockBlueZDeviceAuthType.requestPasskey,
+        passkey: 123456);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    var agent = TestAgent(passkey: 123456);
+    await client.registerAgent(agent);
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+
+    expect(device.paired, isFalse);
+    await device.pair();
+    expect(device.paired, isTrue);
+    expect(agent.passkeyRequested, isTrue);
+  });
+
+  test('pair - default agent', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    var agent = TestAgent();
+    await client.registerAgent(agent);
+    expect(bluez.agentIsDefault, isFalse);
+    await client.requestDefaultAgent();
+    expect(bluez.agentIsDefault, isTrue);
   });
 }
