@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.7
+
+* Add BlueZClient.registerAgent etc that enables devices to be paired.
+
 ## 0.7.6
 
 * Update to dbus 0.7
