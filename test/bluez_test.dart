@@ -133,6 +133,14 @@ class MockBlueZAdapterObject extends MockBlueZObject {
       case 'GetDiscoveryFilters':
         return DBusMethodSuccessResponse(
             [DBusArray.string(discoveryFilter.keys)]);
+      case 'RemoveDevice':
+        var path = methodCall.values[0] as DBusObjectPath;
+        var devices = server.devices.where((device) => device.path == path);
+        if (devices.isEmpty) {
+          return DBusMethodErrorResponse('org.bluez.Error.DoesNotExist');
+        }
+        await server.removeDevice(devices.first);
+        return DBusMethodSuccessResponse();
       case 'SetDiscoveryFilter':
         var properties = (methodCall.values[0] as DBusDict).children.map((key,
                 value) =>
@@ -595,6 +603,9 @@ class MockBlueZServer extends DBusClient {
   String agentCapability = '';
   bool agentIsDefault = false;
 
+  final adapters = <MockBlueZAdapterObject>[];
+  final devices = <MockBlueZDeviceObject>[];
+
   MockBlueZServer(DBusAddress clientAddress) : super(clientAddress);
 
   Future<void> start() async {
@@ -638,11 +649,13 @@ class MockBlueZServer extends DBusClient {
         powered: powered,
         roles: roles,
         uuids: uuids);
+    adapters.add(adapter);
     await registerObject(adapter);
     return adapter;
   }
 
   Future<void> removeAdapter(MockBlueZAdapterObject adapter) async {
+    adapters.remove(adapter);
     await unregisterObject(adapter);
   }
 
@@ -694,12 +707,14 @@ class MockBlueZServer extends DBusClient {
         txPower: txPower,
         wakeAllowed: wakeAllowed,
         uuids: uuids);
+    devices.add(device);
     await registerObject(device);
     return device;
   }
 
-  Future<void> removeDevice(MockBlueZDeviceObject adapter) async {
-    await unregisterObject(adapter);
+  Future<void> removeDevice(MockBlueZDeviceObject device) async {
+    devices.remove(device);
+    await unregisterObject(device);
   }
 
   Future<MockBlueZGattServiceObject> addService(
@@ -1205,6 +1220,32 @@ void main() {
     }));
 
     await bluez.removeDevice(device);
+  });
+
+  test('remove device', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+
+    var a = await bluez.addAdapter('hci0');
+    await bluez.addDevice(a, address: 'DE:71:CE:00:00:01');
+    await bluez.addDevice(a, address: 'DE:71:CE:00:00:02');
+    await bluez.addDevice(a, address: 'DE:71:CE:00:00:03');
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(bluez.devices, hasLength(3));
+    var adapter = client.adapters[0];
+    await adapter.removeDevice(client.devices[1]);
+    expect(bluez.devices, hasLength(2));
+    expect(bluez.devices[0].address, equals('DE:71:CE:00:00:01'));
+    expect(bluez.devices[1].address, equals('DE:71:CE:00:00:03'));
   });
 
   test('device properties', () async {
