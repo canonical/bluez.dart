@@ -212,6 +212,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
   final String modalias;
   final String name;
   bool paired;
+  var pairingCanceled = false;
   final int? passkey;
   final String? pinCode;
   int rssi;
@@ -309,6 +310,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
 
     switch (methodCall.name) {
       case 'CancelPairing':
+        pairingCanceled = true;
         return DBusMethodSuccessResponse();
       case 'Connect':
         if (connected) {
@@ -780,6 +782,7 @@ class TestAgent extends BlueZAgent {
   int? lastPasskey;
   var passkeyRequested = false;
   var authRequested = false;
+  var canceled = false;
 
   TestAgent({this.pinCode, this.passkey});
 
@@ -821,6 +824,11 @@ class TestAgent extends BlueZAgent {
   Future<BlueZAgentResponse> requestAuthorization(BlueZDevice device) async {
     authRequested = true;
     return BlueZAgentResponse.success();
+  }
+
+  @override
+  Future<void> cancel() async {
+    canceled = true;
   }
 }
 
@@ -1891,6 +1899,32 @@ void main() {
     await device.pair();
     expect(device.paired, isTrue);
     expect(agent.passkeyRequested, isTrue);
+  });
+
+  test('pair - cancel', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    var d = await bluez.addDevice(adapter,
+        address: 'DE:71:CE:00:00:01',
+        authType: MockBlueZDeviceAuthType.requestPasskey,
+        passkey: 123456);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+
+    await device.cancelPairing();
+    expect(d.pairingCanceled, isTrue);
   });
 
   test('pair - default agent', () async {
