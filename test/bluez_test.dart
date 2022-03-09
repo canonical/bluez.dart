@@ -2015,6 +2015,8 @@ void main() {
         throwsA(isA<BlueZAuthenticationRejectedException>()));
     expect(() => client.devices[4].pair(),
         throwsA(isA<BlueZAuthenticationRejectedException>()));
+
+    await client.unregisterAgent();
   });
 
   test('pair - no agent', () async {
