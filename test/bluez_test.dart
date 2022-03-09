@@ -29,6 +29,14 @@ class MockBlueZManagerObject extends MockBlueZObject {
         server.agentIsDefault = true;
         return DBusMethodSuccessResponse();
       case 'UnregisterAgent':
+        if (server.agentAddress != null) {
+          await client!.callMethod(
+              destination: server.agentAddress,
+              path: server.agentPath!,
+              interface: 'org.bluez.Agent1',
+              name: 'Release',
+              replySignature: DBusSignature(''));
+        }
         server.agentAddress = null;
         server.agentPath = null;
         server.agentCapability = '';
@@ -782,9 +790,15 @@ class TestAgent extends BlueZAgent {
   int? lastPasskey;
   var passkeyRequested = false;
   var authRequested = false;
+  var released = false;
   var canceled = false;
 
   TestAgent({this.pinCode, this.passkey});
+
+  @override
+  Future<void> release() async {
+    released = true;
+  }
 
   @override
   Future<BlueZAgentPinCodeResponse> requestPinCode(BlueZDevice device) async {
@@ -2177,5 +2191,6 @@ void main() {
     expect(bluez.agentAddress, isNotNull);
     await client.unregisterAgent();
     expect(bluez.agentAddress, isNull);
+    expect(agent.released, isTrue);
   });
 }
