@@ -2016,6 +2016,8 @@ void main() {
     expect(() => client.devices[4].pair(),
         throwsA(isA<BlueZAuthenticationRejectedException>()));
 
+    await client.devices[0].cancelPairing();
+
     await client.unregisterAgent();
   });
 
