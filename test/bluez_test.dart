@@ -1940,4 +1940,26 @@ void main() {
     await client.requestDefaultAgent();
     expect(bluez.agentIsDefault, isTrue);
   });
+
+  test('pair - unregister agent', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    var agent = TestAgent();
+    expect(bluez.agentAddress, isNull);
+    await client.registerAgent(agent);
+    expect(bluez.agentAddress, isNotNull);
+    await client.unregisterAgent();
+    expect(bluez.agentAddress, isNull);
+  });
 }
