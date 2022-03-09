@@ -1008,8 +1008,8 @@ class BlueZAgentResponse {
   factory BlueZAgentResponse.rejected() =>
       BlueZAgentResponse(DBusMethodErrorResponse('org.bluez.Error.Rejected'));
 
-  factory BlueZAgentResponse.cancelled() =>
-      BlueZAgentResponse(DBusMethodErrorResponse('org.bluez.Error.Cancelled'));
+  factory BlueZAgentResponse.canceled() =>
+      BlueZAgentResponse(DBusMethodErrorResponse('org.bluez.Error.Canceled'));
 }
 
 class BlueZAgentPinCodeResponse {
@@ -1024,8 +1024,8 @@ class BlueZAgentPinCodeResponse {
   factory BlueZAgentPinCodeResponse.rejected() => BlueZAgentPinCodeResponse(
       DBusMethodErrorResponse('org.bluez.Error.Rejected'));
 
-  factory BlueZAgentPinCodeResponse.cancelled() => BlueZAgentPinCodeResponse(
-      DBusMethodErrorResponse('org.bluez.Error.Cancelled'));
+  factory BlueZAgentPinCodeResponse.canceled() => BlueZAgentPinCodeResponse(
+      DBusMethodErrorResponse('org.bluez.Error.Canceled'));
 }
 
 class BlueZAgentPasskeyResponse {
@@ -1040,8 +1040,8 @@ class BlueZAgentPasskeyResponse {
   factory BlueZAgentPasskeyResponse.rejected() => BlueZAgentPasskeyResponse(
       DBusMethodErrorResponse('org.bluez.Error.Rejected'));
 
-  factory BlueZAgentPasskeyResponse.cancelled() => BlueZAgentPasskeyResponse(
-      DBusMethodErrorResponse('org.bluez.Error.Cancelled'));
+  factory BlueZAgentPasskeyResponse.canceled() => BlueZAgentPasskeyResponse(
+      DBusMethodErrorResponse('org.bluez.Error.Canceled'));
 }
 
 /// Agent object for a client to register.
@@ -1092,7 +1092,7 @@ abstract class BlueZAgent {
     return BlueZAgentResponse.rejected();
   }
 
-  /// Called when a request is cancelled due to lack of response from the agent.
+  /// Called when a request is canceled due to lack of response from the agent.
   Future<void> cancel() async {}
 }
 
