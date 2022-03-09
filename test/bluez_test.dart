@@ -311,6 +311,9 @@ class MockBlueZDeviceObject extends MockBlueZObject {
       case 'CancelPairing':
         return DBusMethodSuccessResponse();
       case 'Connect':
+        if (connected) {
+          return DBusMethodErrorResponse('org.bluez.Error.AlreadyConnected');
+        }
         await changeProperties(connected: true);
         return DBusMethodSuccessResponse();
       case 'Disconnect':
@@ -324,7 +327,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
           case MockBlueZDeviceAuthType.confirm:
             if (server.agentAddress == null) {
               return DBusMethodErrorResponse(
-                  'org.bluez.Error.AuthenticationFailed');
+                  'org.bluez.Error.AgentNotAvailable');
             }
 
             try {
@@ -344,7 +347,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
           case MockBlueZDeviceAuthType.confirmPinCode:
             if (server.agentAddress == null) {
               return DBusMethodErrorResponse(
-                  'org.bluez.Error.AuthenticationFailed');
+                  'org.bluez.Error.AgentNotAvailable');
             }
 
             try {
@@ -364,7 +367,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
           case MockBlueZDeviceAuthType.confirmPasskey:
             if (server.agentAddress == null) {
               return DBusMethodErrorResponse(
-                  'org.bluez.Error.AuthenticationFailed');
+                  'org.bluez.Error.AgentNotAvailable');
             }
 
             try {
@@ -384,7 +387,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
           case MockBlueZDeviceAuthType.requestPinCode:
             if (server.agentAddress == null) {
               return DBusMethodErrorResponse(
-                  'org.bluez.Error.AuthenticationFailed');
+                  'org.bluez.Error.AgentNotAvailable');
             }
 
             DBusMethodSuccessResponse result;
@@ -409,7 +412,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
           case MockBlueZDeviceAuthType.requestPasskey:
             if (server.agentAddress == null) {
               return DBusMethodErrorResponse(
-                  'org.bluez.Error.AuthenticationFailed');
+                  'org.bluez.Error.AgentNotAvailable');
             }
 
             DBusMethodSuccessResponse result;
@@ -1406,6 +1409,28 @@ void main() {
     expect(device.connected, isTrue);
   });
 
+  test('device already connected', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var a = await bluez.addAdapter('hci0');
+    await bluez.addDevice(a, address: 'DE:71:CE:00:00:01', connected: true);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+    expect(
+        () => device.connect(), throwsA(isA<BlueZAlreadyConnectedException>()));
+  });
+
   test('device disconnect', () async {
     var server = DBusServer();
     var clientAddress =
@@ -1871,11 +1896,16 @@ void main() {
     await client.registerAgent(agent);
 
     // Test all pairing that requires interaction fails without an agent that doesn't implement the required methods.
-    expect(() => client.devices[0].pair(), throwsException);
-    expect(() => client.devices[1].pair(), throwsException);
-    expect(() => client.devices[2].pair(), throwsException);
-    expect(() => client.devices[3].pair(), throwsException);
-    expect(() => client.devices[4].pair(), throwsException);
+    expect(() => client.devices[0].pair(),
+        throwsA(isA<BlueZAuthenticationRejectedException>()));
+    expect(() => client.devices[1].pair(),
+        throwsA(isA<BlueZAuthenticationRejectedException>()));
+    expect(() => client.devices[2].pair(),
+        throwsA(isA<BlueZAuthenticationRejectedException>()));
+    expect(() => client.devices[3].pair(),
+        throwsA(isA<BlueZAuthenticationRejectedException>()));
+    expect(() => client.devices[4].pair(),
+        throwsA(isA<BlueZAuthenticationRejectedException>()));
   });
 
   test('pair - no agent', () async {
@@ -1913,11 +1943,16 @@ void main() {
     addTearDown(() async => await client.close());
 
     // Test all pairing that requires interaction fails without an agent.
-    expect(() => client.devices[0].pair(), throwsException);
-    expect(() => client.devices[1].pair(), throwsException);
-    expect(() => client.devices[2].pair(), throwsException);
-    expect(() => client.devices[3].pair(), throwsException);
-    expect(() => client.devices[4].pair(), throwsException);
+    expect(() => client.devices[0].pair(),
+        throwsA(isA<BlueZAgentNotAvailableException>()));
+    expect(() => client.devices[1].pair(),
+        throwsA(isA<BlueZAgentNotAvailableException>()));
+    expect(() => client.devices[2].pair(),
+        throwsA(isA<BlueZAgentNotAvailableException>()));
+    expect(() => client.devices[3].pair(),
+        throwsA(isA<BlueZAgentNotAvailableException>()));
+    expect(() => client.devices[4].pair(),
+        throwsA(isA<BlueZAgentNotAvailableException>()));
   });
 
   test('pair - default agent', () async {
