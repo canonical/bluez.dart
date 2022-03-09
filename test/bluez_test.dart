@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:bluez/bluez.dart';
@@ -220,7 +221,6 @@ class MockBlueZDeviceObject extends MockBlueZObject {
   final String modalias;
   final String name;
   bool paired;
-  var pairingCanceled = false;
   final int? passkey;
   final String? pinCode;
   int rssi;
@@ -318,8 +318,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
 
     switch (methodCall.name) {
       case 'CancelPairing':
-        pairingCanceled = true;
-        return DBusMethodSuccessResponse();
+        return cancelPairing();
       case 'Connect':
         if (connected) {
           return DBusMethodErrorResponse('org.bluez.Error.AlreadyConnected');
@@ -334,6 +333,21 @@ class MockBlueZDeviceObject extends MockBlueZObject {
       default:
         return DBusMethodErrorResponse.unknownMethod();
     }
+  }
+
+  Future<DBusMethodResponse> cancelPairing() async {
+    if (server.agentAddress == null) {
+      return DBusMethodErrorResponse('org.bluez.Error.AgentNotAvailable');
+    }
+
+    await client!.callMethod(
+        destination: server.agentAddress,
+        path: server.agentPath!,
+        interface: 'org.bluez.Agent1',
+        name: 'Cancel',
+        replySignature: DBusSignature(''));
+
+    return DBusMethodSuccessResponse();
   }
 
   Future<DBusMethodResponse> pair() async {
@@ -791,7 +805,6 @@ class TestAgent extends BlueZAgent {
   var passkeyRequested = false;
   var authRequested = false;
   var released = false;
-  var canceled = false;
 
   TestAgent({this.pinCode, this.passkey});
 
@@ -839,41 +852,80 @@ class TestAgent extends BlueZAgent {
     authRequested = true;
     return BlueZAgentResponse.success();
   }
-
-  @override
-  Future<void> cancel() async {
-    canceled = true;
-  }
 }
 
 class TestEmptyAgent extends BlueZAgent {}
 
 class TestCancelAgent extends BlueZAgent {
+  Completer<BlueZAgentResponse>? completer;
+  Completer<BlueZAgentPinCodeResponse>? pinCodeCompleter;
+  Completer<BlueZAgentPasskeyResponse>? passkeyCompleter;
+
   @override
   Future<BlueZAgentPinCodeResponse> requestPinCode(BlueZDevice device) async {
-    return BlueZAgentPinCodeResponse.canceled();
+    if (completer != null ||
+        pinCodeCompleter != null ||
+        passkeyCompleter != null) {
+      return BlueZAgentPinCodeResponse.rejected();
+    }
+    pinCodeCompleter = Completer<BlueZAgentPinCodeResponse>();
+    return pinCodeCompleter!.future;
   }
 
   @override
   Future<BlueZAgentResponse> displayPinCode(
       BlueZDevice device, String pinCode) async {
-    return BlueZAgentResponse.canceled();
+    if (completer != null ||
+        pinCodeCompleter != null ||
+        passkeyCompleter != null) {
+      return BlueZAgentResponse.rejected();
+    }
+    completer = Completer<BlueZAgentResponse>();
+    return completer!.future;
   }
 
   @override
   Future<BlueZAgentPasskeyResponse> requestPasskey(BlueZDevice device) async {
-    return BlueZAgentPasskeyResponse.canceled();
+    if (completer != null ||
+        pinCodeCompleter != null ||
+        passkeyCompleter != null) {
+      return BlueZAgentPasskeyResponse.rejected();
+    }
+    passkeyCompleter = Completer<BlueZAgentPasskeyResponse>();
+    return passkeyCompleter!.future;
   }
 
   @override
   Future<BlueZAgentResponse> requestConfirmation(
       BlueZDevice device, int passkey) async {
-    return BlueZAgentResponse.canceled();
+    if (completer != null ||
+        pinCodeCompleter != null ||
+        passkeyCompleter != null) {
+      return BlueZAgentResponse.rejected();
+    }
+    completer = Completer<BlueZAgentResponse>();
+    return completer!.future;
   }
 
   @override
   Future<BlueZAgentResponse> requestAuthorization(BlueZDevice device) async {
-    return BlueZAgentResponse.canceled();
+    if (completer != null ||
+        pinCodeCompleter != null ||
+        passkeyCompleter != null) {
+      return BlueZAgentResponse.rejected();
+    }
+    completer = Completer<BlueZAgentResponse>();
+    return completer!.future;
+  }
+
+  @override
+  Future<void> cancel() async {
+    completer?.complete(BlueZAgentResponse.canceled());
+    completer = null;
+    pinCodeCompleter?.complete(BlueZAgentPinCodeResponse.canceled());
+    pinCodeCompleter = null;
+    passkeyCompleter?.complete(BlueZAgentPasskeyResponse.canceled());
+    passkeyCompleter = null;
   }
 }
 
@@ -1915,32 +1967,6 @@ void main() {
     expect(agent.passkeyRequested, isTrue);
   });
 
-  test('pair - cancel', () async {
-    var server = DBusServer();
-    var clientAddress =
-        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
-    addTearDown(() async => await server.close());
-
-    var bluez = MockBlueZServer(clientAddress);
-    await bluez.start();
-    addTearDown(() async => await bluez.close());
-    var adapter = await bluez.addAdapter('hci0');
-    var d = await bluez.addDevice(adapter,
-        address: 'DE:71:CE:00:00:01',
-        authType: MockBlueZDeviceAuthType.requestPasskey,
-        passkey: 123456);
-
-    var client = BlueZClient(bus: DBusClient(clientAddress));
-    await client.connect();
-    addTearDown(() async => await client.close());
-
-    expect(client.devices, hasLength(1));
-    var device = client.devices[0];
-
-    await device.cancelPairing();
-    expect(d.pairingCanceled, isTrue);
-  });
-
   test('pair - default agent', () async {
     var server = DBusServer();
     var clientAddress =
@@ -2038,7 +2064,7 @@ void main() {
         throwsA(isA<BlueZAgentNotAvailableException>()));
   });
 
-  test('pair - agent cancels', () async {
+  test('pair - cancel', () async {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
@@ -2075,17 +2101,27 @@ void main() {
     var agent = TestCancelAgent();
     await client.registerAgent(agent);
 
-    // Test all pairing generates cancel errors.
+    // Test all pairing methods can be canceled with the appropriate exception.
+
     expect(() => client.devices[0].pair(),
         throwsA(isA<BlueZAuthenticationCanceledException>()));
+    await client.devices[0].cancelPairing();
+
     expect(() => client.devices[1].pair(),
         throwsA(isA<BlueZAuthenticationCanceledException>()));
+    await client.devices[1].cancelPairing();
+
     expect(() => client.devices[2].pair(),
         throwsA(isA<BlueZAuthenticationCanceledException>()));
+    await client.devices[2].cancelPairing();
+
     expect(() => client.devices[3].pair(),
         throwsA(isA<BlueZAuthenticationCanceledException>()));
+    await client.devices[3].cancelPairing();
+
     expect(() => client.devices[4].pair(),
         throwsA(isA<BlueZAuthenticationCanceledException>()));
+    await client.devices[4].cancelPairing();
   });
 
   test('pair - default agent', () async {
