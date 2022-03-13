@@ -215,6 +215,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
   bool blocked;
   final int class_;
   bool connected;
+  var connectedProfiles = <String>{};
   final String icon;
   final bool legacyPairing;
   final Map<int, DBusValue> manufacturerData;
@@ -240,6 +241,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
       this.blocked = false,
       this.class_ = 0,
       this.connected = false,
+      Set<String> connectedProfiles = const {},
       this.icon = '',
       this.legacyPairing = false,
       this.manufacturerData = const {},
@@ -256,7 +258,9 @@ class MockBlueZDeviceObject extends MockBlueZObject {
       this.wakeAllowed = false,
       this.uuids = const []})
       : super(DBusObjectPath(
-            adapter.path.value + '/dev_' + address.replaceAll(':', '_')));
+            adapter.path.value + '/dev_' + address.replaceAll(':', '_'))) {
+    this.connectedProfiles.addAll(connectedProfiles);
+  }
 
   @override
   Map<String, Map<String, DBusValue>> get interfacesAndProperties => {
@@ -330,6 +334,20 @@ class MockBlueZDeviceObject extends MockBlueZObject {
           return DBusMethodErrorResponse('org.bluez.Error.NotConnected');
         }
         await changeProperties(connected: false);
+        return DBusMethodSuccessResponse();
+      case 'ConnectProfile':
+        var uuid = (methodCall.values[0] as DBusString).value;
+        if (!uuids.contains(uuid)) {
+          return DBusMethodErrorResponse('org.bluez.Error.NotAvailable');
+        }
+        connectedProfiles.add(uuid);
+        return DBusMethodSuccessResponse();
+      case 'DisconnectProfile':
+        var uuid = (methodCall.values[0] as DBusString).value;
+        if (!connectedProfiles.contains(uuid)) {
+          return DBusMethodErrorResponse('org.bluez.Error.InvalidArguments');
+        }
+        connectedProfiles.remove(uuid);
         return DBusMethodSuccessResponse();
       case 'Pair':
         return pair();
@@ -710,6 +728,7 @@ class MockBlueZServer extends DBusClient {
       bool blocked = false,
       int class_ = 0,
       bool connected = false,
+      Set<String> connectedProfiles = const {},
       String icon = '',
       bool legacyPairing = false,
       Map<int, DBusValue> manufacturerData = const {},
@@ -734,6 +753,7 @@ class MockBlueZServer extends DBusClient {
         blocked: blocked,
         class_: class_,
         connected: connected,
+        connectedProfiles: connectedProfiles,
         icon: icon,
         legacyPairing: legacyPairing,
         manufacturerData: manufacturerData,
@@ -1543,6 +1563,29 @@ void main() {
         () => device.connect(), throwsA(isA<BlueZAlreadyConnectedException>()));
   });
 
+  test('device disconnect', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var a = await bluez.addAdapter('hci0');
+    await bluez.addDevice(a, address: 'DE:71:CE:00:00:01', connected: true);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+    expect(device.connected, isTrue);
+    await device.disconnect();
+    expect(device.connected, isFalse);
+  });
+
   test('device disconnect not connected', () async {
     var server = DBusServer();
     var clientAddress =
@@ -1566,7 +1609,7 @@ void main() {
         () => device.disconnect(), throwsA(isA<BlueZNotConnectedException>()));
   });
 
-  test('device disconnect', () async {
+  test('device connect profile', () async {
     var server = DBusServer();
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
@@ -1576,7 +1619,9 @@ void main() {
     await bluez.start();
     addTearDown(() async => await bluez.close());
     var a = await bluez.addAdapter('hci0');
-    await bluez.addDevice(a, address: 'DE:71:CE:00:00:01', connected: true);
+    var d = await bluez.addDevice(a,
+        address: 'DE:71:CE:00:00:01',
+        uuids: ['00000001-0000-1000-8000-00805f9b34fb']);
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
@@ -1584,9 +1629,41 @@ void main() {
 
     expect(client.devices, hasLength(1));
     var device = client.devices[0];
-    expect(device.connected, isTrue);
-    await device.disconnect();
-    expect(device.connected, isFalse);
+    expect(d.connectedProfiles.contains('00000001-0000-1000-8000-00805f9b34fb'),
+        isFalse);
+    await device.connectProfile(
+        BlueZUUID.fromString('00000001-0000-1000-8000-00805f9b34fb'));
+    expect(d.connectedProfiles.contains('00000001-0000-1000-8000-00805f9b34fb'),
+        isTrue);
+  });
+
+  test('device disconnect profile', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var a = await bluez.addAdapter('hci0');
+    var d = await bluez.addDevice(a,
+        address: 'DE:71:CE:00:00:01',
+        uuids: ['00000001-0000-1000-8000-00805f9b34fb'],
+        connectedProfiles: {'00000001-0000-1000-8000-00805f9b34fb'});
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+    expect(d.connectedProfiles.contains('00000001-0000-1000-8000-00805f9b34fb'),
+        isTrue);
+    await device.disconnectProfile(
+        BlueZUUID.fromString('00000001-0000-1000-8000-00805f9b34fb'));
+    expect(d.connectedProfiles.contains('00000001-0000-1000-8000-00805f9b34fb'),
+        isFalse);
   });
 
   test('device properties changed', () async {
