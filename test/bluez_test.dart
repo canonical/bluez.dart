@@ -326,6 +326,9 @@ class MockBlueZDeviceObject extends MockBlueZObject {
         await changeProperties(connected: true);
         return DBusMethodSuccessResponse();
       case 'Disconnect':
+        if (!connected) {
+          return DBusMethodErrorResponse('org.bluez.Error.NotConnected');
+        }
         await changeProperties(connected: false);
         return DBusMethodSuccessResponse();
       case 'Pair':
@@ -1538,6 +1541,29 @@ void main() {
     var device = client.devices[0];
     expect(
         () => device.connect(), throwsA(isA<BlueZAlreadyConnectedException>()));
+  });
+
+  test('device disconnect not connected', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var a = await bluez.addAdapter('hci0');
+    await bluez.addDevice(a, address: 'DE:71:CE:00:00:01', connected: false);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+    expect(device.connected, isFalse);
+    expect(
+        () => device.disconnect(), throwsA(isA<BlueZNotConnectedException>()));
   });
 
   test('device disconnect', () async {
