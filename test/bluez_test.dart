@@ -1844,7 +1844,7 @@ void main() {
         uuid: '0000000a-0000-1000-8000-00805f9b34fb');
     await bluez.addCharacteristic(s, 2,
         uuid: '0000000b-0000-1000-8000-00805f9b34fb');
-    var c = await bluez.addCharacteristic(s, 3,
+    await bluez.addCharacteristic(s, 3,
         flags: [
           'broadcast',
           'read',
@@ -1902,15 +1902,73 @@ void main() {
         }));
     expect(service.characteristics[2].value, equals([0xde, 0xad, 0xbe, 0xef]));
     expect(service.characteristics[2].descriptors, isEmpty);
+  });
 
-    var data = await service.characteristics[2].readValue();
+  test('gatt read value', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    var d = await bluez.addDevice(adapter, address: 'DE:71:CE:00:00:01');
+    var s = await bluez.addService(d, 1,
+        uuid: '00000001-0000-1000-8000-00805f9b34fb');
+    await bluez.addCharacteristic(s, 1,
+        uuid: '0000000c-0000-1000-8000-00805f9b34fb',
+        value: [0xde, 0xad, 0xbe, 0xef]);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+    expect(device.gattServices, hasLength(1));
+    var service = device.gattServices[0];
+    expect(service.characteristics, hasLength(1));
+    var characteristic = service.characteristics[0];
+
+    var data = await characteristic.readValue();
     expect(data, equals([0xde, 0xad, 0xbe, 0xef]));
-    data = await service.characteristics[2].readValue(offset: 2);
+    data = await characteristic.readValue(offset: 2);
     expect(data, equals([0xbe, 0xef]));
+  });
 
-    await service.characteristics[2].writeValue([0xaa]);
+  test('gatt write value', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    var d = await bluez.addDevice(adapter, address: 'DE:71:CE:00:00:01');
+    var s = await bluez.addService(d, 1,
+        uuid: '00000001-0000-1000-8000-00805f9b34fb');
+    var c = await bluez.addCharacteristic(s, 1,
+        uuid: '0000000c-0000-1000-8000-00805f9b34fb',
+        value: [0xde, 0xad, 0xbe, 0xef]);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+    expect(device.gattServices, hasLength(1));
+    var service = device.gattServices[0];
+    expect(service.characteristics, hasLength(1));
+    var characteristic = service.characteristics[0];
+
+    await characteristic.writeValue([0xaa]);
     expect(c.value, equals([0xaa, 0xad, 0xbe, 0xef]));
-    await service.characteristics[2].writeValue([0xbb, 0xcc], offset: 1);
+    await characteristic.writeValue([0xbb, 0xcc], offset: 1);
     expect(c.value, equals([0xaa, 0xbb, 0xcc, 0xef]));
   });
 
