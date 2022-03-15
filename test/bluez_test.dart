@@ -6,23 +6,6 @@ import 'package:bluez/bluez.dart';
 import 'package:dbus/dbus.dart';
 import 'package:test/test.dart';
 
-Future<File> openTempFile() async {
-  var r = Random();
-  final randomChars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  while (true) {
-    var path = Directory.systemTemp.path + '/bluez-dart-test-';
-    for (var i = 0; i < 8; i++) {
-      path += randomChars[r.nextInt(randomChars.length)];
-    }
-    var file = File(path);
-    if (await file.exists()) {
-      continue;
-    }
-
-    return file;
-  }
-}
-
 class MockBlueZObject extends DBusObject {
   MockBlueZObject(DBusObjectPath path) : super(path);
 }
@@ -565,7 +548,8 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
   var writeAcquired = false;
   var value = <int>[];
   final String uuid;
-  File? writtenData;
+  final _writtenDataCompleter = Completer<List<int>>();
+  Future<List<int>> get writtenData => _writtenDataCompleter.future;
   File? notifyData;
 
   MockBlueZGattCharacteristicObject(this.service, this.id,
@@ -621,9 +605,24 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
           return DBusMethodErrorResponse('org.bluez.Error.Failed');
         }
         await changeProperties(writeAcquired: true);
-        writtenData ??= await openTempFile();
-        var handle = ResourceHandle.fromFile(
-            await writtenData!.open(mode: FileMode.write));
+        var path = '@bluez-dart-test-';
+        var r = Random();
+        final randomChars =
+            'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        for (var i = 0; i < 8; i++) {
+          path += randomChars[r.nextInt(randomChars.length)];
+        }
+        var address = InternetAddress(path, type: InternetAddressType.unix);
+        var serverSocket = await ServerSocket.bind(address, 0);
+        RawSocket? socket;
+        unawaited(serverSocket.first.then((childSocket) async {
+          _writtenDataCompleter.complete(await childSocket.first);
+          await childSocket.close();
+          await serverSocket.close();
+          await socket?.close();
+        }));
+        socket = await RawSocket.connect(address, 0);
+        var handle = ResourceHandle.fromRawSocket(socket);
         return DBusMethodSuccessResponse([DBusUnixFd(handle), DBusUint16(mtu)]);
       case 'StartNotify':
         if (notifying) {
@@ -678,16 +677,6 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
 
   Future<void> setNotifyAcquired(bool notifyAcquired) async {
     await changeProperties(notifyAcquired: notifyAcquired);
-  }
-
-  Future<String> getWrittenData() async {
-    if (writtenData == null) {
-      return '';
-    }
-    var data = writtenData!.readAsString();
-    await writtenData!.delete();
-    writtenData = null;
-    return data;
   }
 }
 
@@ -2101,8 +2090,9 @@ void main() {
     var result = await characteristic.acquireWrite();
     expect(characteristic.writeAcquired, isTrue);
     expect(result.mtu, equals(23));
-    result.file.writeStringSync('Hello world!');
-    expect(await c.getWrittenData(), equals('Hello world!'));
+    result.socket.write([0x12, 0x34, 0x56]);
+    expect(await c.writtenData, equals([0x12, 0x34, 0x56]));
+    await result.socket.close();
   });
 
   test('gatt acquire notify', () async {
