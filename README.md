@@ -21,7 +21,7 @@ await client.close();
 This package is designed for use on Linux, as the BlueZ stack is Linux-specific
 (other platforms have their own Bluetooth stacks). You can safely include this
 package when writing applications that work on multiple platforms, but it will
-fail with an exception when being used if the BlueZ is not present.
+fail with an exception when being used if BlueZ is not present.
 
 ## Contributing to bluez.dart
 
