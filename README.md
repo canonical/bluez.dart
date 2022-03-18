@@ -6,10 +6,10 @@ Provides a client to connect to [BlueZ](http://www.bluez.org/) - the Linux Bluet
 ```dart
 import 'package:bluez/bluez.dart';
 
-var client = BlueZClient();
+final client = BlueZClient();
 await client.connect();
 
-for (var device in client.devices) {
+for (final device in client.devices) {
   print('Device ${device.address} ${device.alias}');
 }
 
