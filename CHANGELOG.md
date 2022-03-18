@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.7.7
+## 0.7.8
+
+* Add BlueZGattCharacteristic notification support.
+* Add BlueZGattCharacteristic.acquireWrite.
 
 * Add BlueZClient.registerAgent etc that enables devices to be paired.
 
