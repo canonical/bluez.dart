@@ -1,10 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+* Bump version so we can maintain a 0.7 series that has lesser Dart requirement.
+
 ## 0.7.8
 
 * Add BlueZGattCharacteristic notification support.
 * Add BlueZGattCharacteristic.acquireWrite.
-
 * Add BlueZClient.registerAgent etc that enables devices to be paired.
 
 ## 0.7.6
