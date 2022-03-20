@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:dbus/dbus.dart';
 
@@ -368,17 +367,6 @@ class BlueZGattService {
       _client._getGattCharacteristics(_object.path);
 }
 
-/// Result of a [BlueZGattCharacteristic.acquireWrite] call.
-class BlueZGattAcquireWriteResult {
-  /// Socket to allow writes to the GATT characteristic.
-  final RawSocket socket;
-
-  /// The maximum number of bytes allowed in each write to [socket].
-  final int mtu;
-
-  const BlueZGattAcquireWriteResult(this.socket, this.mtu);
-}
-
 /// A characteristic of a GATT service.
 class BlueZGattCharacteristic {
   final String _gattCharacteristicInterfaceName =
@@ -541,19 +529,6 @@ class BlueZGattCharacteristic {
     await _object.callMethod(_gattCharacteristicInterfaceName, 'WriteValue',
         [DBusArray.byte(data), DBusDict.stringVariant(options)],
         replySignature: DBusSignature(''));
-  }
-
-  /// Acquire a [RawSocket] for writing to this characterisitic.
-  /// Usage of [writeValue] will be locked causing it to return NotPermitted error.
-  /// To release the lock close the returned file.
-  Future<BlueZGattAcquireWriteResult> acquireWrite() async {
-    var options = <String, DBusValue>{};
-    var result = await _object.callMethod(_gattCharacteristicInterfaceName,
-        'AcquireWrite', [DBusDict.stringVariant(options)],
-        replySignature: DBusSignature('hq'));
-    var handle = (result.values[0] as DBusUnixFd).handle;
-    var mtu = (result.values[1] as DBusUint16).value;
-    return BlueZGattAcquireWriteResult(handle.toRawSocket(), mtu);
   }
 
   /// Starts a notification session from this characteristic if it supports value notifications or indications.

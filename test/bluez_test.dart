@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:bluez/bluez.dart';
 import 'package:dbus/dbus.dart';
@@ -600,30 +599,6 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
         value.removeRange(offset, offset + data.length);
         value.insertAll(offset, data);
         return DBusMethodSuccessResponse();
-      case 'AcquireWrite':
-        if (writeAcquired) {
-          return DBusMethodErrorResponse('org.bluez.Error.Failed');
-        }
-        await changeProperties(writeAcquired: true);
-        var path = '@bluez-dart-test-';
-        var r = Random();
-        final randomChars =
-            'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        for (var i = 0; i < 8; i++) {
-          path += randomChars[r.nextInt(randomChars.length)];
-        }
-        var address = InternetAddress(path, type: InternetAddressType.unix);
-        var serverSocket = await ServerSocket.bind(address, 0);
-        RawSocket? socket;
-        unawaited(serverSocket.first.then((childSocket) async {
-          _writtenDataCompleter.complete(await childSocket.first);
-          await childSocket.close();
-          await serverSocket.close();
-          await socket?.close();
-        }));
-        socket = await RawSocket.connect(address, 0);
-        var handle = ResourceHandle.fromRawSocket(socket);
-        return DBusMethodSuccessResponse([DBusUnixFd(handle), DBusUint16(mtu)]);
       case 'StartNotify':
         if (notifying) {
           return DBusMethodErrorResponse('org.bluez.Error.InProgress');
@@ -2058,41 +2033,6 @@ void main() {
     expect(descriptor.value, equals([0xaa, 0xad, 0xbe, 0xef]));
     await characteristic.descriptors[2].writeValue([0xbb, 0xcc], offset: 1);
     expect(descriptor.value, equals([0xaa, 0xbb, 0xcc, 0xef]));
-  });
-
-  test('gatt acquire write', () async {
-    var server = DBusServer();
-    var clientAddress =
-        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
-    addTearDown(() async => await server.close());
-
-    var bluez = MockBlueZServer(clientAddress);
-    await bluez.start();
-    addTearDown(() async => await bluez.close());
-    var adapter = await bluez.addAdapter('hci0');
-    var d = await bluez.addDevice(adapter,
-        address: 'DE:71:CE:00:00:01', servicesResolved: true);
-    var s = await bluez.addService(d, 1,
-        uuid: '00000001-0000-1000-8000-00805f9b34fb');
-    var c = await bluez.addCharacteristic(s, 1,
-        uuid: '00000002-0000-1000-8000-00805f9b34fb', mtu: 23);
-
-    var client = BlueZClient(bus: DBusClient(clientAddress));
-    await client.connect();
-    addTearDown(() async => await client.close());
-
-    expect(client.devices, hasLength(1));
-    var device = client.devices[0];
-    expect(device.gattServices, hasLength(1));
-    var service = device.gattServices[0];
-    expect(service.characteristics, hasLength(1));
-    var characteristic = service.characteristics[0];
-    var result = await characteristic.acquireWrite();
-    expect(characteristic.writeAcquired, isTrue);
-    expect(result.mtu, equals(23));
-    result.socket.write([0x12, 0x34, 0x56]);
-    expect(await c.writtenData, equals([0x12, 0x34, 0x56]));
-    await result.socket.close();
   });
 
   test('gatt acquire notify', () async {
