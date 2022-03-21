@@ -152,9 +152,7 @@ class MockBlueZAdapterObject extends MockBlueZObject {
         await server.removeDevice(devices.first);
         return DBusMethodSuccessResponse();
       case 'SetDiscoveryFilter':
-        var properties = (methodCall.values[0] as DBusDict).children.map((key,
-                value) =>
-            MapEntry((key as DBusString).value, (value as DBusVariant).value));
+        var properties = (methodCall.values[0] as DBusDict).mapStringVariant();
         discoveryFilter.addAll(properties);
         return DBusMethodSuccessResponse();
       case 'StartDiscovery':
@@ -584,18 +582,12 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
 
     switch (methodCall.name) {
       case 'ReadValue':
-        var options = (methodCall.values[0] as DBusDict).children.map((key,
-                value) =>
-            MapEntry((key as DBusString).value, (value as DBusVariant).value));
+        var options = (methodCall.values[0] as DBusDict).mapStringVariant();
         var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
         return DBusMethodSuccessResponse([DBusArray.byte(value.skip(offset))]);
       case 'WriteValue':
-        var data = (methodCall.values[0] as DBusArray)
-            .children
-            .map((value) => (value as DBusByte).value);
-        var options = (methodCall.values[1] as DBusDict).children.map((key,
-                value) =>
-            MapEntry((key as DBusString).value, (value as DBusVariant).value));
+        var data = (methodCall.values[0] as DBusArray).mapByte();
+        var options = (methodCall.values[1] as DBusDict).mapStringVariant();
         var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
         value.removeRange(offset, offset + data.length);
         value.insertAll(offset, data);
@@ -710,18 +702,12 @@ class MockBlueZGattDescriptorObject extends MockBlueZObject {
 
     switch (methodCall.name) {
       case 'ReadValue':
-        var options = (methodCall.values[0] as DBusDict).children.map((key,
-                value) =>
-            MapEntry((key as DBusString).value, (value as DBusVariant).value));
+        var options = (methodCall.values[0] as DBusDict).mapStringVariant();
         var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
         return DBusMethodSuccessResponse([DBusArray.byte(value.skip(offset))]);
       case 'WriteValue':
-        var data = (methodCall.values[0] as DBusArray)
-            .children
-            .map((value) => (value as DBusByte).value);
-        var options = (methodCall.values[1] as DBusDict).children.map((key,
-                value) =>
-            MapEntry((key as DBusString).value, (value as DBusVariant).value));
+        var data = (methodCall.values[0] as DBusArray).mapByte();
+        var options = (methodCall.values[1] as DBusDict).mapStringVariant();
         var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
         value.removeRange(offset, offset + data.length);
         value.insertAll(offset, data);

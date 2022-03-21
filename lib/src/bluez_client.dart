@@ -186,10 +186,7 @@ class BlueZAdapter {
     var result = await _object.callMethod(
         _adapterInterfaceName, 'GetDiscoveryFilters', [],
         replySignature: DBusSignature('as'));
-    return (result.returnValues[0] as DBusArray)
-        .children
-        .map((v) => (v as DBusString).value)
-        .toList();
+    return (result.returnValues[0] as DBusArray).mapString().toList();
   }
 
   /// Sets the device discovery filter.
@@ -505,10 +502,7 @@ class BlueZGattCharacteristic {
     var result = await _object.callMethod(_gattCharacteristicInterfaceName,
         'ReadValue', [DBusDict.stringVariant(options)],
         replySignature: DBusSignature('ay'));
-    return (result.returnValues[0] as DBusArray)
-        .children
-        .map((value) => (value as DBusByte).value)
-        .toList();
+    return (result.returnValues[0] as DBusArray).mapByte().toList();
   }
 
   /// Writes [data] to the characteristic.
@@ -598,10 +592,7 @@ class BlueZGattDescriptor {
     var result = await _object.callMethod(_gattDescriptorInterfaceName,
         'ReadValue', [DBusDict.stringVariant(options)],
         replySignature: DBusSignature('ay'));
-    return (result.returnValues[0] as DBusArray)
-        .children
-        .map((value) => (value as DBusByte).value)
-        .toList();
+    return (result.returnValues[0] as DBusArray).mapByte().toList();
   }
 
   /// Writes [data] to the descriptor.
@@ -747,10 +738,7 @@ class BlueZDevice {
       if (value.signature != DBusSignature('ay')) {
         return [];
       }
-      return (value as DBusArray)
-          .children
-          .map((value) => (value as DBusByte).value)
-          .toList();
+      return (value as DBusArray).mapByte().toList();
     }
 
     return (value as DBusDict).children.map((key, value) => MapEntry(
@@ -785,10 +773,7 @@ class BlueZDevice {
       if (value.signature != DBusSignature('ay')) {
         return [];
       }
-      return (value as DBusArray)
-          .children
-          .map((value) => (value as DBusByte).value)
-          .toList();
+      return (value as DBusArray).mapByte().toList();
     }
 
     return (value as DBusDict).children.map((key, value) => MapEntry(
@@ -916,10 +901,7 @@ class _BlueZObject extends DBusRemoteObject {
     if (value.signature != DBusSignature('ay')) {
       return null;
     }
-    return (value as DBusArray)
-        .children
-        .map((e) => (e as DBusByte).value)
-        .toList();
+    return (value as DBusArray).mapByte().toList();
   }
 
   /// Gets a cached signed 16 bit integer property, or returns null if not present or not the correct type.
@@ -979,10 +961,7 @@ class _BlueZObject extends DBusRemoteObject {
     if (value.signature != DBusSignature('as')) {
       return null;
     }
-    return (value as DBusArray)
-        .children
-        .map((e) => (e as DBusString).value)
-        .toList();
+    return (value as DBusArray).mapString().toList();
   }
 
   /// Gets a cached object path property, or returns null if not present or not the correct type.
