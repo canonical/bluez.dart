@@ -10,6 +10,16 @@ class MockBlueZObject extends DBusObject {
   MockBlueZObject(DBusObjectPath path) : super(path);
 }
 
+InternetAddress makeRandomUnixAddress() {
+  var path = '@bluez-dart-test-';
+  var r = Random();
+  final randomChars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for (var i = 0; i < 8; i++) {
+    path += randomChars[r.nextInt(randomChars.length)];
+  }
+  return InternetAddress(path, type: InternetAddressType.unix);
+}
+
 class MockBlueZManagerObject extends MockBlueZObject {
   final MockBlueZServer server;
 
@@ -597,14 +607,7 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
           return DBusMethodErrorResponse('org.bluez.Error.Failed');
         }
         await changeProperties(writeAcquired: true);
-        var path = '@bluez-dart-test-';
-        var r = Random();
-        final randomChars =
-            'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        for (var i = 0; i < 8; i++) {
-          path += randomChars[r.nextInt(randomChars.length)];
-        }
-        var address = InternetAddress(path, type: InternetAddressType.unix);
+        var address = makeRandomUnixAddress();
         var serverSocket = await ServerSocket.bind(address, 0);
         RawSocket? socket;
         unawaited(serverSocket.first.then((childSocket) async {
