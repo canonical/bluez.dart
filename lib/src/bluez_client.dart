@@ -561,7 +561,7 @@ class BlueZGattCharacteristic {
     return BlueZGattAcquireWriteResult(handle.toRawSocket(), mtu);
   }
 
-  /// Acquire a [ResourceHandle] for receiving notifications from this characterisitic.
+  /// Acquire a [RawSocket] for receiving notifications from this characterisitic.
   /// To release the lock close the returned socket.
   Future<BlueZGattAcquireNotifyResult> acquireNotify() async {
     var options = <String, DBusValue>{};
