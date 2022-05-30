@@ -89,26 +89,23 @@ class BlueZUUID {
 
   @override
   String toString() {
-    return value[0].toRadixString(16).padLeft(2, '0') +
-        value[1].toRadixString(16).padLeft(2, '0') +
-        value[2].toRadixString(16).padLeft(2, '0') +
-        value[3].toRadixString(16).padLeft(2, '0') +
-        '-' +
-        value[4].toRadixString(16).padLeft(2, '0') +
-        value[5].toRadixString(16).padLeft(2, '0') +
-        '-' +
-        value[6].toRadixString(16).padLeft(2, '0') +
-        value[7].toRadixString(16).padLeft(2, '0') +
-        '-' +
-        value[8].toRadixString(16).padLeft(2, '0') +
-        value[9].toRadixString(16).padLeft(2, '0') +
-        '-' +
-        value[10].toRadixString(16).padLeft(2, '0') +
-        value[11].toRadixString(16).padLeft(2, '0') +
-        value[12].toRadixString(16).padLeft(2, '0') +
-        value[13].toRadixString(16).padLeft(2, '0') +
-        value[14].toRadixString(16).padLeft(2, '0') +
-        value[15].toRadixString(16).padLeft(2, '0');
+    var v0 = value[0].toRadixString(16).padLeft(2, '0');
+    var v1 = value[1].toRadixString(16).padLeft(2, '0');
+    var v2 = value[2].toRadixString(16).padLeft(2, '0');
+    var v3 = value[3].toRadixString(16).padLeft(2, '0');
+    var v4 = value[4].toRadixString(16).padLeft(2, '0');
+    var v5 = value[5].toRadixString(16).padLeft(2, '0');
+    var v6 = value[6].toRadixString(16).padLeft(2, '0');
+    var v7 = value[7].toRadixString(16).padLeft(2, '0');
+    var v8 = value[8].toRadixString(16).padLeft(2, '0');
+    var v9 = value[9].toRadixString(16).padLeft(2, '0');
+    var v10 = value[10].toRadixString(16).padLeft(2, '0');
+    var v11 = value[11].toRadixString(16).padLeft(2, '0');
+    var v12 = value[12].toRadixString(16).padLeft(2, '0');
+    var v13 = value[13].toRadixString(16).padLeft(2, '0');
+    var v14 = value[14].toRadixString(16).padLeft(2, '0');
+    var v15 = value[15].toRadixString(16).padLeft(2, '0');
+    return '$v0$v1$v2$v3-$v4$v5-$v6$v7-$v8$v9-$v10$v11$v12$v13$v14$v15';
   }
 
   @override

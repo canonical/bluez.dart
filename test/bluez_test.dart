@@ -267,7 +267,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
       this.wakeAllowed = false,
       this.uuids = const []})
       : super(DBusObjectPath(
-            adapter.path.value + '/dev_' + address.replaceAll(':', '_'))) {
+            '${adapter.path.value}/dev_${address.replaceAll(':', '_')}')) {
     this.connectedProfiles.addAll(connectedProfiles);
   }
 
@@ -529,9 +529,8 @@ class MockBlueZGattServiceObject extends MockBlueZObject {
 
   MockBlueZGattServiceObject(this.device, this.id,
       {this.includes = const [], this.primary = true, required this.uuid})
-      : super(DBusObjectPath(device.path.value +
-            '/service' +
-            id.toRadixString(16).padLeft(4, '0')));
+      : super(DBusObjectPath(
+            '${device.path.value}/service${id.toRadixString(16).padLeft(4, '0')}'));
 
   @override
   Map<String, Map<String, DBusValue>> get interfacesAndProperties => {
@@ -565,9 +564,8 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
       this.mtu = 0,
       required this.uuid,
       List<int> value = const []})
-      : super(DBusObjectPath(service.path.value +
-            '/char' +
-            id.toRadixString(16).padLeft(4, '0'))) {
+      : super(DBusObjectPath(
+            '${service.path.value}/char${id.toRadixString(16).padLeft(4, '0')}')) {
     this.value.addAll(value);
   }
 
@@ -703,9 +701,8 @@ class MockBlueZGattDescriptorObject extends MockBlueZObject {
 
   MockBlueZGattDescriptorObject(this.characteristic, this.id,
       {required this.uuid, this.value = const []})
-      : super(DBusObjectPath(characteristic.path.value +
-            '/desc' +
-            id.toRadixString(16).padLeft(4, '0')));
+      : super(DBusObjectPath(
+            '${characteristic.path.value}/desc${id.toRadixString(16).padLeft(4, '0')}'));
 
   @override
   Map<String, Map<String, DBusValue>> get interfacesAndProperties => {

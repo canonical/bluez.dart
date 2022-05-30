@@ -2,9 +2,10 @@ include: package:lints/recommended.yaml
 
 linter:
   rules:
-    - always_declare_return_types
-    - prefer_single_quotes
-    - sort_child_properties_last
-    - unawaited_futures
-    - unsafe_html
-    - use_full_hex_values_for_flutter_colors
+    always_declare_return_types: true
+    prefer_single_quotes: true
+    sort_child_properties_last: true
+    unawaited_futures: true
+    unsafe_html: true
+    use_full_hex_values_for_flutter_colors: true
+    library_private_types_in_public_api: false
