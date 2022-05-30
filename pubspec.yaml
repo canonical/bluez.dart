@@ -16,6 +16,6 @@ dependencies:
   dbus: ^0.7.2
 
 dev_dependencies:
-  lints: ^1.0.1
+  lints: ^2.0.0
   test: ^1.16.8
   test_cov: ^1.0.1
