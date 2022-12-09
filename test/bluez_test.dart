@@ -34,8 +34,8 @@ class MockBlueZManagerObject extends MockBlueZObject {
     switch (methodCall.name) {
       case 'RegisterAgent':
         server.agentAddress = methodCall.sender;
-        server.agentPath = methodCall.values[0] as DBusObjectPath;
-        server.agentCapability = (methodCall.values[1] as DBusString).value;
+        server.agentPath = methodCall.values[0].asObjectPath();
+        server.agentCapability = methodCall.values[1].asString();
         return DBusMethodSuccessResponse();
       case 'RequestDefaultAgent':
         server.agentIsDefault = true;
@@ -126,17 +126,17 @@ class MockBlueZAdapterObject extends MockBlueZObject {
     }
 
     if (name == 'Alias') {
-      alias = (value as DBusString).value;
+      alias = value.asString();
     } else if (name == 'Discoverable') {
-      discoverable = (value as DBusBoolean).value;
+      discoverable = value.asBoolean();
     } else if (name == 'DiscoverableTimeout') {
-      discoverableTimeout = (value as DBusUint32).value;
+      discoverableTimeout = value.asUint32();
     } else if (name == 'Pairable') {
-      pairable = (value as DBusBoolean).value;
+      pairable = value.asBoolean();
     } else if (name == 'PairableTimeout') {
-      pairableTimeout = (value as DBusUint32).value;
+      pairableTimeout = value.asUint32();
     } else if (name == 'Powered') {
-      powered = (value as DBusBoolean).value;
+      powered = value.asBoolean();
     } else {
       return DBusMethodErrorResponse.propertyReadOnly();
     }
@@ -154,7 +154,7 @@ class MockBlueZAdapterObject extends MockBlueZObject {
         return DBusMethodSuccessResponse(
             [DBusArray.string(discoveryFilter.keys)]);
       case 'RemoveDevice':
-        var path = methodCall.values[0] as DBusObjectPath;
+        var path = methodCall.values[0].asObjectPath();
         var devices = server.devices.where((device) => device.path == path);
         if (devices.isEmpty) {
           return DBusMethodErrorResponse('org.bluez.Error.DoesNotExist');
@@ -162,7 +162,7 @@ class MockBlueZAdapterObject extends MockBlueZObject {
         await server.removeDevice(devices.first);
         return DBusMethodSuccessResponse();
       case 'SetDiscoveryFilter':
-        var properties = (methodCall.values[0] as DBusDict).mapStringVariant();
+        var properties = methodCall.values[0].asStringVariantDict();
         discoveryFilter.addAll(properties);
         return DBusMethodSuccessResponse();
       case 'StartDiscovery':
@@ -310,13 +310,13 @@ class MockBlueZDeviceObject extends MockBlueZObject {
     }
 
     if (name == 'Alias') {
-      alias = (value as DBusString).value;
+      alias = value.asString();
     } else if (name == 'Blocked') {
-      blocked = (value as DBusBoolean).value;
+      blocked = value.asBoolean();
     } else if (name == 'Trusted') {
-      trusted = (value as DBusBoolean).value;
+      trusted = value.asBoolean();
     } else if (name == 'WakeAllowed') {
-      wakeAllowed = (value as DBusBoolean).value;
+      wakeAllowed = value.asBoolean();
     } else {
       return DBusMethodErrorResponse.propertyReadOnly();
     }
@@ -345,14 +345,14 @@ class MockBlueZDeviceObject extends MockBlueZObject {
         await changeProperties(connected: false);
         return DBusMethodSuccessResponse();
       case 'ConnectProfile':
-        var uuid = (methodCall.values[0] as DBusString).value;
+        var uuid = methodCall.values[0].asString();
         if (!uuids.contains(uuid)) {
           return DBusMethodErrorResponse('org.bluez.Error.NotAvailable');
         }
         connectedProfiles.add(uuid);
         return DBusMethodSuccessResponse();
       case 'DisconnectProfile':
-        var uuid = (methodCall.values[0] as DBusString).value;
+        var uuid = methodCall.values[0].asString();
         if (!connectedProfiles.contains(uuid)) {
           return DBusMethodErrorResponse('org.bluez.Error.InvalidArguments');
         }
@@ -457,7 +457,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
           return processAuthErrorResponse(e.response);
         }
 
-        var pinCode = (result.values[0] as DBusString).value;
+        var pinCode = result.values[0].asString();
         if (pinCode == this.pinCode) {
           await changeProperties(paired: true);
         }
@@ -480,7 +480,7 @@ class MockBlueZDeviceObject extends MockBlueZObject {
           return processAuthErrorResponse(e.response);
         }
 
-        var passkey = (result.values[0] as DBusUint32).value;
+        var passkey = result.values[0].asUint32();
         if (passkey == this.passkey) {
           await changeProperties(paired: true);
         }
@@ -590,13 +590,13 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
 
     switch (methodCall.name) {
       case 'ReadValue':
-        var options = (methodCall.values[0] as DBusDict).mapStringVariant();
-        var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
+        var options = methodCall.values[0].asStringVariantDict();
+        var offset = options['offset']?.asUint16() ?? 0;
         return DBusMethodSuccessResponse([DBusArray.byte(value.skip(offset))]);
       case 'WriteValue':
-        var data = (methodCall.values[0] as DBusArray).mapByte();
-        var options = (methodCall.values[1] as DBusDict).mapStringVariant();
-        var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
+        var data = methodCall.values[0].asByteArray();
+        var options = methodCall.values[1].asStringVariantDict();
+        var offset = options['offset']?.asUint16() ?? 0;
         value.removeRange(offset, offset + data.length);
         value.insertAll(offset, data);
         return DBusMethodSuccessResponse();
@@ -721,13 +721,13 @@ class MockBlueZGattDescriptorObject extends MockBlueZObject {
 
     switch (methodCall.name) {
       case 'ReadValue':
-        var options = (methodCall.values[0] as DBusDict).mapStringVariant();
-        var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
+        var options = methodCall.values[0].asStringVariantDict();
+        var offset = options['offset']?.asUint16() ?? 0;
         return DBusMethodSuccessResponse([DBusArray.byte(value.skip(offset))]);
       case 'WriteValue':
-        var data = (methodCall.values[0] as DBusArray).mapByte();
-        var options = (methodCall.values[1] as DBusDict).mapStringVariant();
-        var offset = (options['offset'] as DBusUint16?)?.value ?? 0;
+        var data = methodCall.values[0].asByteArray();
+        var options = methodCall.values[1].asStringVariantDict();
+        var offset = options['offset']?.asUint16() ?? 0;
         value.removeRange(offset, offset + data.length);
         value.insertAll(offset, data);
         return DBusMethodSuccessResponse();
