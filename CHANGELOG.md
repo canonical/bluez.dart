@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.1
+
+* Update to dbus 0.7.8
+
 ## 0.8.0
 
 * Bump version so we can maintain a 0.7 series that has lesser Dart requirement.
