@@ -417,6 +417,10 @@ class BlueZGattCharacteristic {
       _object.getByteArrayProperty(_gattCharacteristicInterfaceName, 'Value') ??
       [];
 
+  /// Get mtu value of this characteristic
+  int? get mtu =>
+      _object.getUint16Property(_gattCharacteristicInterfaceName, 'MTU');
+
   /// True if if this characteristic has been acquired by any client using [acquireWrite].
   bool get writeAcquired =>
       _object.getBooleanProperty(
