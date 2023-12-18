@@ -1867,6 +1867,7 @@ void main() {
           'secure-write',
           'authorize'
         ],
+        mtu: 512,
         value: [0xde, 0xad, 0xbe, 0xef],
         uuid: '0000000c-0000-1000-8000-00805f9b34fb');
 
@@ -1882,6 +1883,7 @@ void main() {
     expect(service.characteristics[0].uuid, equals(BlueZUUID.short(0xa)));
     expect(service.characteristics[1].uuid, equals(BlueZUUID.short(0xb)));
     expect(service.characteristics[2].uuid, equals(BlueZUUID.short(0xc)));
+    expect(service.characteristics[2], equals(512));
     expect(
         service.characteristics[2].flags,
         equals({
@@ -1905,39 +1907,6 @@ void main() {
         }));
     expect(service.characteristics[2].value, equals([0xde, 0xad, 0xbe, 0xef]));
     expect(service.characteristics[2].descriptors, isEmpty);
-  });
-
-  test('gatt request mtu', () async {
-    var server = DBusServer();
-    var clientAddress =
-        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
-    addTearDown(() async => await server.close());
-
-    var bluez = MockBlueZServer(clientAddress);
-    await bluez.start();
-    addTearDown(() async => await bluez.close());
-    var adapter = await bluez.addAdapter('hci0');
-    var d = await bluez.addDevice(adapter, address: 'DE:71:CE:00:00:01');
-    var s = await bluez.addService(d, 1,
-        uuid: '00000001-0000-1000-8000-00805f9b34fb');
-    await bluez.addCharacteristic(s, 1,
-        uuid: '0000000c-0000-1000-8000-00805f9b34fb',
-        mtu: 512,
-        value: [0xde, 0xad, 0xbe, 0xef]);
-
-    var client = BlueZClient(bus: DBusClient(clientAddress));
-    await client.connect();
-    addTearDown(() async => await client.close());
-
-    expect(client.devices, hasLength(1));
-    var device = client.devices[0];
-    expect(device.gattServices, hasLength(1));
-    var service = device.gattServices[0];
-    expect(service.characteristics, hasLength(1));
-    var characteristic = service.characteristics[0];
-
-    var data = characteristic.mtu;
-    expect(data, equals(512));
   });
 
   test('gatt read value', () async {
