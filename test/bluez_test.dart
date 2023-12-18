@@ -578,7 +578,8 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
           'WriteAcquired': DBusBoolean(writeAcquired),
           'Service': service.path,
           'UUID': DBusString(uuid),
-          'Value': DBusArray.byte(value)
+          'Value': DBusArray.byte(value),
+          'MTU': DBusInt16(mtu),
         }
       };
 
@@ -650,6 +651,8 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
         }
         await changeProperties(notifying: false);
         return DBusMethodSuccessResponse();
+      case 'MTU':
+        return DBusMethodSuccessResponse([DBusUint16(mtu)]);
       default:
         return DBusMethodErrorResponse.unknownMethod();
     }
@@ -1902,6 +1905,39 @@ void main() {
         }));
     expect(service.characteristics[2].value, equals([0xde, 0xad, 0xbe, 0xef]));
     expect(service.characteristics[2].descriptors, isEmpty);
+  });
+
+  test('gatt request mtu', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+    var adapter = await bluez.addAdapter('hci0');
+    var d = await bluez.addDevice(adapter, address: 'DE:71:CE:00:00:01');
+    var s = await bluez.addService(d, 1,
+        uuid: '00000001-0000-1000-8000-00805f9b34fb');
+    await bluez.addCharacteristic(s, 1,
+        uuid: '0000000c-0000-1000-8000-00805f9b34fb',
+        mtu: 512,
+        value: [0xde, 0xad, 0xbe, 0xef]);
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.devices, hasLength(1));
+    var device = client.devices[0];
+    expect(device.gattServices, hasLength(1));
+    var service = device.gattServices[0];
+    expect(service.characteristics, hasLength(1));
+    var characteristic = service.characteristics[0];
+
+    var data = characteristic.mtu;
+    expect(data, equals(512));
   });
 
   test('gatt read value', () async {
