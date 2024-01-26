@@ -457,8 +457,8 @@ class MockBlueZDeviceObject extends MockBlueZObject {
           return processAuthErrorResponse(e.response);
         }
 
-        var pinCode = result.values[0].asString();
-        if (pinCode == this.pinCode) {
+        var pinCodeValue = result.values[0].asString();
+        if (pinCodeValue == pinCode) {
           await changeProperties(paired: true);
         }
         return DBusMethodSuccessResponse();
@@ -1883,7 +1883,7 @@ void main() {
     expect(service.characteristics[0].uuid, equals(BlueZUUID.short(0xa)));
     expect(service.characteristics[1].uuid, equals(BlueZUUID.short(0xb)));
     expect(service.characteristics[2].uuid, equals(BlueZUUID.short(0xc)));
-    expect(service.characteristics[2], equals(512));
+    expect(service.characteristics[2].mtu, equals(512));
     expect(
         service.characteristics[2].flags,
         equals({
