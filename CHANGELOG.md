@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.2
+
+* Add BlueZGattCharacteristic.mtu.
+
 ## 0.8.1
 
 * Update to dbus 0.7.8
