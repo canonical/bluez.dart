@@ -579,7 +579,7 @@ class MockBlueZGattCharacteristicObject extends MockBlueZObject {
           'Service': service.path,
           'UUID': DBusString(uuid),
           'Value': DBusArray.byte(value),
-          'MTU': DBusInt16(mtu),
+          'MTU': DBusUint16(mtu),
         }
       };
 
