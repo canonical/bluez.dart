@@ -170,6 +170,7 @@ class BlueZAdapter {
   final BlueZClient _client;
   final _BlueZObject _object;
   BlueZAdvertisingManager? _advertisingManager;
+  BlueZBatteryProviderManager? _batteryProviderManager;
 
   BlueZAdapter(this._client, this._object);
 
@@ -177,6 +178,12 @@ class BlueZAdapter {
   BlueZAdvertisingManager get advertisingManager {
     _advertisingManager ??= BlueZAdvertisingManager(_client, _object);
     return _advertisingManager!;
+  }
+
+  /// Retrive the battery provider manager associated with the adapter.
+  BlueZBatteryProviderManager get batteryProviderManager {
+    _batteryProviderManager ??= BlueZBatteryProviderManager(_client, _object);
+    return _batteryProviderManager!;
   }
 
   /// Stream of property names as their values change.
@@ -652,6 +659,268 @@ class BlueZAdvertisement extends DBusObject {
           DBusIntrospectProperty('LocalName', DBusSignature('s'),
               access: DBusPropertyAccess.read),
         ],
+      ),
+    ];
+  }
+}
+
+/// Management for Battery provisioning
+class BlueZBatteryProviderManager {
+  final String _batteryProviderManagerInterfaceName =
+      'org.bluez.BatteryProviderManager1';
+
+  final BlueZClient _client;
+  final _BlueZObject _object;
+  int _nextBatteryProviderId;
+
+  BlueZBatteryProviderManager(this._client, this._object)
+      : _nextBatteryProviderId = 0;
+
+  /// Registers a battery provider.
+  Future<BlueZBatteryProvider> registerBatteryProvider() async {
+    var provider = BlueZBatteryProvider(_client,
+        DBusObjectPath('/org/bluez/battery/provider$_nextBatteryProviderId'));
+    _nextBatteryProviderId += 1;
+
+    await _client._bus.registerObject(provider);
+
+    await _object.callMethod(_batteryProviderManagerInterfaceName,
+        'RegisterBatteryProvider', [provider.path],
+        replySignature: DBusSignature(''));
+
+    return provider;
+  }
+
+  /// Unregisters a battery provider previously registered with
+  /// [registerBatteryProvider]. After unregistration, the
+  /// [BlueZBatteryProvider] objects provided by this client are
+  /// ignored by bluetoothd(8).
+  Future<void> unregisterBatteryProvider(BlueZBatteryProvider provider) async {
+    if (provider.device != null) {
+      throw Exception(
+          'Provider cannot be unregistered until its battery is unregistered');
+    }
+
+    await _object.callMethod(_batteryProviderManagerInterfaceName,
+        'UnregisterBatteryProvider', [provider.path],
+        replySignature: DBusSignature(''));
+
+    await _client._bus.unregisterObject(provider);
+  }
+}
+
+/// Class for providing a battery
+class BlueZBatteryProvider extends DBusObject {
+  final String _batteryProviderInterfaceName = 'org.bluez.BatteryProvider1';
+
+  BlueZBatteryProvider(this._client, DBusObjectPath path)
+      : _nextBatteryId = 0,
+        super(path, isObjectManager: true);
+
+  final BlueZClient _client;
+  int _nextBatteryId;
+
+  /// The object of the device that has this battery.
+  BlueZBattery? device;
+
+  /// Registers a new battery with an optional [source].
+  /// You can then use the registered battery to provide it
+  /// with [registerBatteryProvider].
+  Future<BlueZBattery> addBattery({int percentage = 0, String? source}) async {
+    if (device != null) {
+      throw Exception('Cannot register multiple devices on a provider');
+    }
+
+    device = BlueZBattery(
+        DBusObjectPath('${path.asString()}/device_$_nextBatteryId'),
+        source: source);
+    device!.percentage = percentage;
+    _nextBatteryId += 1;
+
+    await _client._bus.registerObject(device!);
+    return device!;
+  }
+
+  /// Unregisters the battery
+  Future<void> removeBattery(BlueZBattery dev) async {
+    if (device != dev) {
+      throw Exception('Provided device is not registered to this provider');
+    }
+
+    await _client._bus.unregisterObject(dev);
+    device = null;
+  }
+
+  @override
+  Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
+    if (methodCall.interface == _batteryProviderInterfaceName) {
+      return DBusMethodErrorResponse.unknownMethod();
+    } else {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+  }
+
+  @override
+  Future<DBusMethodResponse> getProperty(String interface, String name) async {
+    if (interface == _batteryProviderInterfaceName) {
+      if (name == 'Device') {
+        if (device == null) {
+          return DBusMethodErrorResponse.failed('No device has been added');
+        } else {
+          return DBusMethodSuccessResponse([device!.path]);
+        }
+      }
+
+      return DBusMethodErrorResponse.unknownProperty();
+    } else {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+  }
+
+  @override
+  Future<DBusMethodResponse> setProperty(
+      String interface, String name, DBusValue value) async {
+    if (interface == _batteryProviderInterfaceName) {
+      if (name == 'Device') {
+        return DBusMethodErrorResponse.propertyReadOnly();
+      }
+
+      return DBusMethodErrorResponse.unknownProperty();
+    } else {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+  }
+
+  @override
+  Future<DBusMethodResponse> getAllProperties(String interface) async {
+    var properties = <String, DBusValue>{};
+    if (interface == _batteryProviderInterfaceName) {
+      properties['Device'] =
+          (await getProperty(_batteryProviderInterfaceName, 'Device'))
+              .returnValues[0];
+    }
+    return DBusMethodSuccessResponse([DBusDict.stringVariant(properties)]);
+  }
+
+  @override
+  List<DBusIntrospectInterface> introspect() {
+    return [
+      DBusIntrospectInterface(
+        _batteryProviderInterfaceName,
+        properties: [
+          DBusIntrospectProperty('Device', DBusSignature('o'),
+              access: DBusPropertyAccess.read),
+        ],
+      ),
+    ];
+  }
+}
+
+/// A battery which is exposed over BlueZ
+class BlueZBattery extends DBusObject {
+  final String _batteryInterfaceName = 'org.bluez.Battery1';
+
+  BlueZBattery(
+    DBusObjectPath path, {
+    this.source,
+  }) : super(path);
+
+  int _percentage = 0;
+
+  /// The percentage of battery left as an unsigned 8-bit integer.
+  int get percentage => _percentage;
+
+  /// Sets the percentage of the battery left,
+  /// must be an unsigned 8-bit integer.
+  set percentage(int value) {
+    assert(value > -1 && value < 255);
+    _percentage = value;
+    emitPropertiesChanged(_batteryInterfaceName, changedProperties: {
+      'Percentage': DBusByte(value),
+    });
+  }
+
+  /// Describes where the battery information comes from.
+  /// This property is informational only and may be useful for debugging
+  /// purposes. Providers from org.bluez.BatteryProvider(5) may make use
+  /// of this property to indicate where the battery report comes from
+  /// (e.g. "HFP 1.7", "HID", or the profile UUID).
+  final String? source;
+
+  @override
+  Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
+    if (methodCall.interface == _batteryInterfaceName) {
+      return DBusMethodErrorResponse.unknownMethod();
+    } else {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+  }
+
+  @override
+  Future<DBusMethodResponse> getProperty(String interface, String name) async {
+    if (interface == _batteryInterfaceName) {
+      if (name == 'Percentage') {
+        return DBusMethodSuccessResponse([DBusByte(percentage)]);
+      }
+
+      if (name == 'Source' && source != null) {
+        return DBusMethodSuccessResponse([DBusString(source!)]);
+      }
+
+      return DBusMethodErrorResponse.unknownProperty();
+    } else {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+  }
+
+  @override
+  Future<DBusMethodResponse> setProperty(
+      String interface, String name, DBusValue value) async {
+    if (interface == _batteryInterfaceName) {
+      if (name == 'Percentage') {
+        return DBusMethodErrorResponse.propertyReadOnly();
+      }
+
+      if (name == 'Source' && source != null) {
+        return DBusMethodErrorResponse.propertyReadOnly();
+      }
+
+      return DBusMethodErrorResponse.unknownProperty();
+    } else {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+  }
+
+  @override
+  Future<DBusMethodResponse> getAllProperties(String interface) async {
+    var properties = <String, DBusValue>{};
+    if (interface == _batteryInterfaceName) {
+      properties['Percentage'] =
+          (await getProperty(_batteryInterfaceName, 'Percentage'))
+              .returnValues[0];
+
+      if (source != null) {
+        properties['Source'] =
+            (await getProperty(_batteryInterfaceName, 'Source'))
+                .returnValues[0];
+      }
+    }
+    return DBusMethodSuccessResponse([DBusDict.stringVariant(properties)]);
+  }
+
+  @override
+  List<DBusIntrospectInterface> introspect() {
+    return [
+      DBusIntrospectInterface(
+        _batteryInterfaceName,
+        properties: [
+          DBusIntrospectProperty('Percentage', DBusSignature('y'),
+              access: DBusPropertyAccess.read),
+          source != null
+              ? DBusIntrospectProperty('Source', DBusSignature('s'),
+                  access: DBusPropertyAccess.read)
+              : null,
+        ].where((v) => v != null).toList().cast<DBusIntrospectProperty>(),
       ),
     ];
   }

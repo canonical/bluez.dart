@@ -145,34 +145,44 @@ class MockBlueZAdapterObject extends MockBlueZObject {
 
   @override
   Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
-    if (methodCall.interface != 'org.bluez.Adapter1') {
-      return DBusMethodErrorResponse.unknownInterface();
-    }
-
-    switch (methodCall.name) {
-      case 'GetDiscoveryFilters':
-        return DBusMethodSuccessResponse(
-            [DBusArray.string(discoveryFilter.keys)]);
-      case 'RemoveDevice':
-        var path = methodCall.values[0].asObjectPath();
-        var devices = server.devices.where((device) => device.path == path);
-        if (devices.isEmpty) {
-          return DBusMethodErrorResponse('org.bluez.Error.DoesNotExist');
+    switch (methodCall.interface) {
+      case 'org.bluez.BatteryProviderManager1':
+        switch (methodCall.name) {
+          case 'RegisterBatteryProvider':
+            return DBusMethodSuccessResponse();
+          case 'UnregisterBatteryProvider':
+            return DBusMethodSuccessResponse();
+          default:
+            return DBusMethodErrorResponse.unknownMethod();
         }
-        await server.removeDevice(devices.first);
-        return DBusMethodSuccessResponse();
-      case 'SetDiscoveryFilter':
-        var properties = methodCall.values[0].asStringVariantDict();
-        discoveryFilter.addAll(properties);
-        return DBusMethodSuccessResponse();
-      case 'StartDiscovery':
-        discovering = true;
-        return DBusMethodSuccessResponse();
-      case 'StopDiscovery':
-        discovering = false;
-        return DBusMethodSuccessResponse();
+      case 'org.bluez.Adapter1':
+        switch (methodCall.name) {
+          case 'GetDiscoveryFilters':
+            return DBusMethodSuccessResponse(
+                [DBusArray.string(discoveryFilter.keys)]);
+          case 'RemoveDevice':
+            var path = methodCall.values[0].asObjectPath();
+            var devices = server.devices.where((device) => device.path == path);
+            if (devices.isEmpty) {
+              return DBusMethodErrorResponse('org.bluez.Error.DoesNotExist');
+            }
+            await server.removeDevice(devices.first);
+            return DBusMethodSuccessResponse();
+          case 'SetDiscoveryFilter':
+            var properties = methodCall.values[0].asStringVariantDict();
+            discoveryFilter.addAll(properties);
+            return DBusMethodSuccessResponse();
+          case 'StartDiscovery':
+            discovering = true;
+            return DBusMethodSuccessResponse();
+          case 'StopDiscovery':
+            discovering = false;
+            return DBusMethodSuccessResponse();
+          default:
+            return DBusMethodErrorResponse.unknownMethod();
+        }
       default:
-        return DBusMethodErrorResponse.unknownMethod();
+        return DBusMethodErrorResponse.unknownInterface();
     }
   }
 
@@ -2589,5 +2599,35 @@ void main() {
     await client.unregisterAgent();
     expect(bluez.agentAddress, isNull);
     expect(agent.released, isTrue);
+  });
+
+  test('battery', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+
+    await bluez.addAdapter('hci0');
+
+    var client = BlueZClient(bus: DBusClient(clientAddress));
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.adapters, hasLength(1));
+
+    var adapter = client.adapters[0];
+    var bpm = adapter.batteryProviderManager;
+
+    var provider = await bpm.registerBatteryProvider();
+    var battery = await provider.addBattery(source: 'Dummy Battery');
+
+    battery.percentage = 10;
+
+    await provider.removeBattery(battery);
+    await bpm.unregisterBatteryProvider(provider);
   });
 }
