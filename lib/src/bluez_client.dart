@@ -429,7 +429,7 @@ class BlueZAdvertisingManager {
 
 enum BlueZAdvertisementType {
   broadcast,
-  peripherial,
+  peripheral,
 }
 
 /// BtLE Advertisement instance
