@@ -2611,19 +2611,22 @@ void main() {
     await bluez.start();
     addTearDown(() async => await bluez.close());
 
-    await bluez.addAdapter('hci0');
+    var a = await bluez.addAdapter('hci0');
+    var d = await bluez.addDevice(a, address: 'DE:71:CE:00:00:01');
 
     var client = BlueZClient(bus: DBusClient(clientAddress));
     await client.connect();
     addTearDown(() async => await client.close());
 
     expect(client.adapters, hasLength(1));
+    expect(client.devices, hasLength(1));
 
     var adapter = client.adapters[0];
+    var device = client.devices[0];
     var bpm = adapter.batteryProviderManager;
 
     var provider = await bpm.registerBatteryProvider();
-    var battery = await provider.addBattery(source: 'Dummy Battery');
+    var battery = await provider.addBattery(device, source: 'Dummy Battery');
 
     battery.percentage = 10;
 
