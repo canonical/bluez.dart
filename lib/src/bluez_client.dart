@@ -394,6 +394,7 @@ class BlueZAdvertisingManager {
     int duration = 2,
     int timeout = 0,
     String localName = '',
+    Future<void> Function()? onRelease,
   }) async {
     final advert = BlueZAdvertisement(
       DBusObjectPath('/org/bluez/advertisement/advert$_nextAdvertId'),
@@ -408,6 +409,7 @@ class BlueZAdvertisingManager {
       duration: duration,
       timeout: timeout,
       localName: localName,
+      onRelease: onRelease,
     );
 
     _nextAdvertId += 1;
@@ -442,27 +444,20 @@ enum BlueZAdvertisementType {
 class BlueZAdvertisement extends DBusObject {
   final String _advertInterfaceName = 'org.bluez.LEAdvertisement1';
 
-  BlueZAdvertisement(
-    DBusObjectPath path, {
-    required this.manufacturerData,
-    required this.type,
-    this.serviceUuids = const [],
-    this.serviceData = const {},
-    this.includeTxPower = false,
-    this.solicitUuids = const [],
-    this.includes = const [],
-    this.appearance = 0,
-    this.duration = 2,
-    this.timeout = 0,
-    this.localName = '',
-  }) : super(path);
-
-  /// This method gets called when the service daemon
-  /// removes the Advertisement. A client can use it to do
-  /// cleanup tasks. There is no need to call
-  /// UnregisterAdvertisement because when this method gets
-  /// called it has already been unregistered.
-  Future<void> release() async {}
+  BlueZAdvertisement(DBusObjectPath path,
+      {required this.manufacturerData,
+      required this.type,
+      this.serviceUuids = const [],
+      this.serviceData = const {},
+      this.includeTxPower = false,
+      this.solicitUuids = const [],
+      this.includes = const [],
+      this.appearance = 0,
+      this.duration = 2,
+      this.timeout = 0,
+      this.localName = '',
+      this.onRelease})
+      : super(path);
 
   final Map<BlueZManufacturerId, DBusValue> manufacturerData;
   final BlueZAdvertisementType type;
@@ -475,6 +470,7 @@ class BlueZAdvertisement extends DBusObject {
   final int duration;
   final int timeout;
   final String localName;
+  final Future<void> Function()? onRelease;
 
   Map<String, DBusValue> _getProperties() {
     return <String, DBusValue>{
@@ -504,7 +500,7 @@ class BlueZAdvertisement extends DBusObject {
         if (methodCall.values.isNotEmpty) {
           return DBusMethodErrorResponse.invalidArgs();
         }
-        await release();
+        await onRelease?.call();
         return DBusMethodSuccessResponse();
       } else {
         return DBusMethodErrorResponse.unknownMethod();
