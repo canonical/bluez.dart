@@ -726,7 +726,8 @@ class BlueZBatteryProvider extends DBusObject {
   /// Registers a new battery with an optional [source].
   /// You can then use the registered battery to provide it
   /// with [registerBatteryProvider].
-  Future<BlueZBattery> addBattery({int percentage = 0, String? source}) async {
+  Future<BlueZBattery> addBattery(
+      {int percentage = 0, String source = ''}) async {
     if (device != null) {
       throw Exception('Cannot register multiple devices on a provider');
     }
@@ -822,13 +823,17 @@ class BlueZBattery extends DBusObject {
 
   BlueZBattery(
     DBusObjectPath path, {
-    this.source,
+    this.source = '',
   }) : super(path);
 
   int _percentage = 0;
 
   /// The percentage of battery left as an unsigned 8-bit integer.
   int get percentage => _percentage;
+
+  @override
+  Map<String, Map<String, DBusValue>> get interfacesAndProperties =>
+      <String, Map<String, DBusValue>>{_batteryInterfaceName: _getProperties()};
 
   /// Sets the percentage of the battery left,
   /// must be an unsigned 8-bit integer.
@@ -845,7 +850,16 @@ class BlueZBattery extends DBusObject {
   /// purposes. Providers from org.bluez.BatteryProvider(5) may make use
   /// of this property to indicate where the battery report comes from
   /// (e.g. "HFP 1.7", "HID", or the profile UUID).
-  final String? source;
+  final String source;
+
+  Map<String, DBusValue> _getProperties() {
+    var properties = <String, DBusValue>{};
+    properties['Percentage'] = DBusByte(percentage);
+    if (source != null) {
+      properties['Source'] = DBusString(source);
+    }
+    return properties;
+  }
 
   @override
   Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
@@ -858,54 +872,41 @@ class BlueZBattery extends DBusObject {
 
   @override
   Future<DBusMethodResponse> getProperty(String interface, String name) async {
-    if (interface == _batteryInterfaceName) {
-      if (name == 'Percentage') {
-        return DBusMethodSuccessResponse([DBusByte(percentage)]);
-      }
-
-      if (name == 'Source' && source != null) {
-        return DBusMethodSuccessResponse([DBusString(source!)]);
-      }
-
-      return DBusMethodErrorResponse.unknownProperty();
-    } else {
+    if (interface != _batteryInterfaceName) {
       return DBusMethodErrorResponse.unknownInterface();
+    }
+
+    switch (name) {
+      case 'Percentage':
+        return DBusGetPropertyResponse(DBusByte(percentage));
+      case 'Source':
+        return DBusGetPropertyResponse(DBusString(source));
+      default:
+        return DBusMethodErrorResponse.unknownProperty();
     }
   }
 
   @override
   Future<DBusMethodResponse> setProperty(
       String interface, String name, DBusValue value) async {
-    if (interface == _batteryInterfaceName) {
-      if (name == 'Percentage') {
-        return DBusMethodErrorResponse.propertyReadOnly();
-      }
-
-      if (name == 'Source' && source != null) {
-        return DBusMethodErrorResponse.propertyReadOnly();
-      }
-
-      return DBusMethodErrorResponse.unknownProperty();
-    } else {
+    if (interface != _batteryInterfaceName) {
       return DBusMethodErrorResponse.unknownInterface();
+    }
+
+    switch (name) {
+      case 'Percentage':
+      case 'Source':
+        return DBusMethodErrorResponse.propertyReadOnly();
+      default:
+        return DBusMethodErrorResponse.unknownProperty();
     }
   }
 
   @override
   Future<DBusMethodResponse> getAllProperties(String interface) async {
-    var properties = <String, DBusValue>{};
-    if (interface == _batteryInterfaceName) {
-      properties['Percentage'] =
-          (await getProperty(_batteryInterfaceName, 'Percentage'))
-              .returnValues[0];
-
-      if (source != null) {
-        properties['Source'] =
-            (await getProperty(_batteryInterfaceName, 'Source'))
-                .returnValues[0];
-      }
-    }
-    return DBusMethodSuccessResponse([DBusDict.stringVariant(properties)]);
+    return DBusGetAllPropertiesResponse(interface == _batteryInterfaceName
+        ? _getProperties()
+        : <String, DBusValue>{});
   }
 
   @override
