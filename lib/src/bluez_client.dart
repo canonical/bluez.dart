@@ -745,7 +745,7 @@ class BlueZBattery extends DBusObject {
     this.device, {
     int percentage = 0,
     this.source = '',
-  })  : this._percentage = percentage,
+  })  : _percentage = percentage,
         super(path);
 
   /// The percentage of battery left as an unsigned 8-bit integer.
@@ -773,13 +773,11 @@ class BlueZBattery extends DBusObject {
   final String source;
 
   Map<String, DBusValue> _getProperties() {
-    var properties = <String, DBusValue>{};
-    properties['Percentage'] = DBusByte(percentage);
-    if (source != null) {
-      properties['Source'] = DBusString(source);
-    }
-    properties['Device'] = device._object.path;
-    return properties;
+    return <String, DBusValue>{
+      'Percentage': DBusByte(percentage),
+      'Source': DBusString(source),
+      'Device': device._object.path
+    };
   }
 
   @override
@@ -841,11 +839,9 @@ class BlueZBattery extends DBusObject {
         properties: [
           DBusIntrospectProperty('Percentage', DBusSignature('y'),
               access: DBusPropertyAccess.read),
-          source != null
-              ? DBusIntrospectProperty('Source', DBusSignature('s'),
-                  access: DBusPropertyAccess.read)
-              : null,
-        ].where((v) => v != null).toList().cast<DBusIntrospectProperty>(),
+          DBusIntrospectProperty('Source', DBusSignature('s'),
+              access: DBusPropertyAccess.read),
+        ],
       ),
     ];
   }

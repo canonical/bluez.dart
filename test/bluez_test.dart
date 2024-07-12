@@ -101,7 +101,7 @@ class MockBlueZBatteryProvider extends DBusRemoteObject {
   }
 
   Future<void> close() async {
-    _signalSubscription.cancel();
+    await _signalSubscription.cancel();
   }
 }
 
@@ -2677,7 +2677,7 @@ void main() {
     addTearDown(() async => await bluez.close());
 
     var a = await bluez.addAdapter('hci0');
-    var d = await bluez.addDevice(a, address: 'DE:71:CE:00:00:01');
+    await bluez.addDevice(a, address: 'DE:71:CE:00:00:01');
 
     var bus = DBusClient(clientAddress);
     var client = BlueZClient(bus: bus);
@@ -2730,7 +2730,7 @@ void main() {
     addTearDown(() async => await bluez.close());
 
     var a = await bluez.addAdapter('hci0');
-    var d = await bluez.addDevice(a, address: 'DE:71:CE:00:00:01');
+    await bluez.addDevice(a, address: 'DE:71:CE:00:00:01');
 
     var bus = DBusClient(clientAddress);
     var client = BlueZClient(bus: bus);
@@ -2750,8 +2750,7 @@ void main() {
 
     var bp = bluez.adapters[0].batteryProviders[0];
     expect(bp.batteries, isEmpty);
-    var battery = await provider.addBattery(device,
-        percentage: 100, source: 'Dummy Battery');
+    await provider.addBattery(device, percentage: 100, source: 'Dummy Battery');
     // Ensure signals handled.
     await bus.ping();
     expect(bp.batteries, hasLength(1));
