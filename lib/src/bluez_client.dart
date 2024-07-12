@@ -355,7 +355,7 @@ class BlueZAdapter {
           .toList();
 }
 
-/// BtLE Advertising Manager
+/// BlueZ server object to register advertisements.
 class BlueZAdvertisingManager {
   final String _advertInterfaceName = 'org.bluez.LEAdvertisingManager1';
 
@@ -366,8 +366,7 @@ class BlueZAdvertisingManager {
   BlueZAdvertisingManager(this._client, this._object) : _nextAdvertId = 0;
 
   /// Registers an advertisement object to be sent over the LE
-  /// Advertising channel.  The service must be exported
-  /// under interface LEAdvertisement1.
+  /// advertising channel.
   ///
   /// InvalidArguments error indicates that the object has
   /// invalid or conflicting properties.
@@ -423,8 +422,7 @@ class BlueZAdvertisingManager {
   }
 
   /// This unregisters an advertisement that has been
-  /// previously registered.  The object path parameter must
-  /// match the same value that has been used on registration.
+  /// previously registered using [registerAdvertisement].
   Future<void> unregisterAdvertisement(BlueZAdvertisement advert) async {
     await _object.callMethod(
         _advertInterfaceName, 'UnregisterAdvertisement', [advert.path],
@@ -434,12 +432,13 @@ class BlueZAdvertisingManager {
   }
 }
 
+/// Type of advertisement.
 enum BlueZAdvertisementType {
   broadcast,
   peripheral,
 }
 
-/// BtLE Advertisement instance
+/// An advertisement that is being sent over Bluetooth.
 class BlueZAdvertisement extends DBusObject {
   final String _advertInterfaceName = 'org.bluez.LEAdvertisement1';
 
@@ -477,6 +476,27 @@ class BlueZAdvertisement extends DBusObject {
   final int timeout;
   final String localName;
 
+  Map<String, DBusValue> _getProperties() {
+    return <String, DBusValue>{
+      'ManufacturerData': DBusDict(
+          DBusSignature('q'),
+          DBusSignature('v'),
+          manufacturerData.map(
+              (id, value) => MapEntry(DBusUint16(id.id), DBusVariant(value)))),
+      'Type': DBusString(type.name),
+      'ServiceUUIDs': DBusArray.string(serviceUuids),
+      'ServiceData': DBusDict.stringVariant(
+          serviceData.map((uuid, value) => MapEntry(uuid.toString(), value))),
+      'IncludeTxPower': DBusBoolean(includeTxPower),
+      'SolicitUUIDs': DBusArray.string(solicitUuids),
+      'Includes': DBusArray.string(includes),
+      'Appearance': DBusUint16(appearance),
+      'Duration': DBusUint16(duration),
+      'Timeout': DBusUint16(timeout),
+      'LocalName': DBusString(localName)
+    };
+  }
+
   @override
   Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
     if (methodCall.interface == _advertInterfaceName) {
@@ -496,134 +516,72 @@ class BlueZAdvertisement extends DBusObject {
 
   @override
   Future<DBusMethodResponse> getProperty(String interface, String name) async {
-    if (interface == _advertInterfaceName) {
-      if (name == 'ManufacturerData') {
-        return DBusMethodSuccessResponse([
-          DBusDict(
-              DBusSignature('q'),
-              DBusSignature('v'),
-              manufacturerData.map((id, value) =>
-                  MapEntry(DBusUint16(id.id), DBusVariant(value))))
-        ]);
-      }
-
-      if (name == 'Type') {
-        return DBusMethodSuccessResponse([DBusString(type.name)]);
-      }
-
-      if (name == 'ServiceUUIDs') {
-        return DBusMethodSuccessResponse([DBusArray.string(serviceUuids)]);
-      }
-
-      if (name == 'ServiceData') {
-        return DBusMethodSuccessResponse([
-          DBusDict.stringVariant(serviceData
-              .map((uuid, value) => MapEntry(uuid.toString(), value)))
-        ]);
-      }
-
-      if (name == 'IncludeTxPower') {
-        return DBusMethodSuccessResponse([DBusBoolean(includeTxPower)]);
-      }
-
-      if (name == 'SolicitUUIDs') {
-        return DBusMethodSuccessResponse([DBusArray.string(solicitUuids)]);
-      }
-
-      if (name == 'Includes') {
-        return DBusMethodSuccessResponse([DBusArray.string(includes)]);
-      }
-
-      if (name == 'Appearance') {
-        return DBusMethodSuccessResponse([DBusUint16(appearance)]);
-      }
-
-      if (name == 'Duration') {
-        return DBusMethodSuccessResponse([DBusUint16(duration)]);
-      }
-
-      if (name == 'Timeout') {
-        return DBusMethodSuccessResponse([DBusUint16(timeout)]);
-      }
-
-      if (name == 'LocalName') {
-        return DBusMethodSuccessResponse([DBusString(localName)]);
-      }
-
-      return DBusMethodErrorResponse.unknownProperty();
-    } else {
+    if (interface != _advertInterfaceName) {
       return DBusMethodErrorResponse.unknownInterface();
+    }
+
+    switch (name) {
+      case 'ManufacturerData':
+        return DBusGetPropertyResponse(DBusDict(
+            DBusSignature('q'),
+            DBusSignature('v'),
+            manufacturerData.map((id, value) =>
+                MapEntry(DBusUint16(id.id), DBusVariant(value)))));
+      case 'Type':
+        return DBusGetPropertyResponse(DBusString(type.name));
+      case 'ServiceUUIDs':
+        return DBusGetPropertyResponse(DBusArray.string(serviceUuids));
+      case 'ServiceData':
+        return DBusGetPropertyResponse(DBusDict.stringVariant(serviceData
+            .map((uuid, value) => MapEntry(uuid.toString(), value))));
+      case 'IncludeTxPower':
+        return DBusGetPropertyResponse(DBusBoolean(includeTxPower));
+      case 'SolicitUUIDs':
+        return DBusGetPropertyResponse(DBusArray.string(solicitUuids));
+      case 'Includes':
+        return DBusGetPropertyResponse(DBusArray.string(includes));
+      case 'Appearance':
+        return DBusGetPropertyResponse(DBusUint16(appearance));
+      case 'Duration':
+        return DBusGetPropertyResponse(DBusUint16(duration));
+      case 'Timeout':
+        return DBusGetPropertyResponse(DBusUint16(timeout));
+      case 'LocalName':
+        return DBusGetPropertyResponse(DBusString(localName));
+      default:
+        return DBusMethodErrorResponse.unknownProperty();
     }
   }
 
   @override
   Future<DBusMethodResponse> getAllProperties(String interface) async {
-    var properties = <String, DBusValue>{};
-    if (interface == _advertInterfaceName) {
-      properties['Type'] =
-          (await getProperty(_advertInterfaceName, 'Type')).returnValues[0];
-      properties['ServiceUUIDs'] =
-          (await getProperty(_advertInterfaceName, 'ServiceUUIDs'))
-              .returnValues[0];
-      properties['ServiceData'] =
-          (await getProperty(_advertInterfaceName, 'ServiceData'))
-              .returnValues[0];
-      properties['IncludeTxPower'] =
-          (await getProperty(_advertInterfaceName, 'IncludeTxPower'))
-              .returnValues[0];
-      properties['ManufacturerData'] =
-          (await getProperty(_advertInterfaceName, 'ManufacturerData'))
-              .returnValues[0];
-      properties['SolicitUUIDs'] =
-          (await getProperty(_advertInterfaceName, 'SolicitUUIDs'))
-              .returnValues[0];
-      properties['Includes'] =
-          (await getProperty(_advertInterfaceName, 'Includes')).returnValues[0];
-      properties['Appearance'] =
-          (await getProperty(_advertInterfaceName, 'Appearance'))
-              .returnValues[0];
-      properties['Duration'] =
-          (await getProperty(_advertInterfaceName, 'Duration')).returnValues[0];
-      properties['Timeout'] =
-          (await getProperty(_advertInterfaceName, 'Timeout')).returnValues[0];
-      properties['LocalName'] =
-          (await getProperty(_advertInterfaceName, 'LocalName'))
-              .returnValues[0];
-    }
-    return DBusMethodSuccessResponse([DBusDict.stringVariant(properties)]);
+    return DBusGetAllPropertiesResponse(interface == _advertInterfaceName
+        ? _getProperties()
+        : <String, DBusValue>{});
   }
 
   @override
   Future<DBusMethodResponse> setProperty(
       String interface, String name, DBusValue value) async {
-    if (interface == _advertInterfaceName) {
-      if (name == 'Type') {
+    if (interface != _advertInterfaceName) {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+
+    switch (name) {
+      case 'Type':
+      case 'ServiceUUIDs':
+      case 'ServiceData':
+      case 'IncludeTxPower':
+      case 'ManufacturerData':
+      case 'SolicitUUIDs':
+      case 'Includes':
+      case 'Appearance':
+      case 'Duration':
+      case 'Timeout':
+      case 'LocalName':
         return DBusMethodErrorResponse.propertyReadOnly();
-      } else if (name == 'ServiceUUIDs') {
-        return DBusMethodErrorResponse.propertyReadOnly();
-      } else if (name == 'ServiceData') {
-        return DBusMethodErrorResponse.propertyReadOnly();
-      } else if (name == 'IncludeTxPower') {
-        return DBusMethodErrorResponse.propertyReadOnly();
-      } else if (name == 'ManufacturerData') {
-        return DBusMethodErrorResponse.propertyReadOnly();
-      } else if (name == 'SolicitUUIDs') {
-        return DBusMethodErrorResponse.propertyReadOnly();
-      } else if (name == 'Includes') {
-        return DBusMethodErrorResponse.propertyReadOnly();
-      } else if (name == 'Appearance') {
-        return DBusMethodErrorResponse.propertyReadOnly();
-      } else if (name == 'Duration') {
-        return DBusMethodErrorResponse.propertyReadOnly();
-      } else if (name == 'Timeout') {
-        return DBusMethodErrorResponse.propertyReadOnly();
-      } else if (name == 'LocalName') {
-        return DBusMethodErrorResponse.propertyReadOnly();
-      } else {
+      default:
         return DBusMethodErrorResponse.unknownProperty();
-      }
-    } else {
-      return DBusMethodErrorResponse.unknownProperty();
     }
   }
 
@@ -837,6 +795,8 @@ class BlueZBattery extends DBusObject {
           DBusIntrospectProperty('Percentage', DBusSignature('y'),
               access: DBusPropertyAccess.read),
           DBusIntrospectProperty('Source', DBusSignature('s'),
+              access: DBusPropertyAccess.read),
+          DBusIntrospectProperty('Device', DBusSignature('o'),
               access: DBusPropertyAccess.read),
         ],
       ),
