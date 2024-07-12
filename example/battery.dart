@@ -5,11 +5,12 @@ void main() async {
   await client.connect();
 
   var adapter = client.adapters.first;
+  var device = client.devices.first;
   var bpm = adapter.batteryProviderManager;
 
   var provider = await bpm.registerBatteryProvider();
-  var battery =
-      await provider.addBattery(percentage: 80, source: 'Dummy Battery');
+  var battery = await provider.addBattery(device,
+      percentage: 80, source: 'Dummy Battery');
 
   battery.percentage = 10;
 }

@@ -60,6 +60,62 @@ class MockBlueZManagerObject extends MockBlueZObject {
   }
 }
 
+class MockBlueZBatteryProvider extends DBusRemoteObject {
+  late final StreamSubscription<DBusSignal> _signalSubscription;
+
+  var batteries = <DBusObjectPath, MockBlueZBattery>{};
+
+  MockBlueZBatteryProvider(DBusClient client,
+      {required String name, required DBusObjectPath path})
+      : super(client, name: name, path: path) {
+    var objectManager = DBusRemoteObjectManager(client, name: name, path: path);
+    _signalSubscription = objectManager.signals.listen((signal) {
+      if (signal is DBusObjectManagerInterfacesAddedSignal) {
+        if (signal.interfacesAndProperties
+            .containsKey('org.bluez.BatteryProvider1')) {
+          var path = signal.changedPath;
+          var properties =
+              signal.interfacesAndProperties['org.bluez.BatteryProvider1']!;
+          var device =
+              properties['Device']?.asObjectPath() ?? DBusObjectPath('/');
+          var percentage = properties['Percentage']?.asByte() ?? 0;
+          var source = properties['Source']?.asString() ?? '';
+          batteries[path] = MockBlueZBattery(
+              client, signal.sender!, path, device,
+              percentage: percentage, source: source);
+        }
+      } else if (signal is DBusObjectManagerInterfacesRemovedSignal) {
+        if (signal.interfaces.contains('org.bluez.BatteryProvider1')) {
+          batteries.remove(signal.changedPath);
+        }
+      } else if (signal is DBusPropertiesChangedSignal) {
+        if (signal.propertiesInterface == 'org.bluez.BatteryProvider1') {
+          var battery = batteries[signal.path];
+          var percentage = signal.changedProperties['Percentage']?.asByte();
+          if (battery != null && percentage != null) {
+            battery.percentage = percentage;
+          }
+        }
+      }
+    });
+  }
+
+  Future<void> close() async {
+    await _signalSubscription.cancel();
+  }
+}
+
+class MockBlueZBattery extends DBusRemoteObject {
+  final DBusObjectPath device;
+  int percentage;
+  final String source;
+
+  MockBlueZBattery(
+      DBusClient client, String name, DBusObjectPath path, this.device,
+      {this.percentage = 0, this.source = ''})
+      : super(client, name: name, path: path);
+}
+
 class MockBlueZAdapterObject extends MockBlueZObject {
   final MockBlueZServer server;
   final String deviceName;
@@ -67,6 +123,7 @@ class MockBlueZAdapterObject extends MockBlueZObject {
   final String address;
   final String addressType;
   String alias;
+  var batteryProviders = <MockBlueZBatteryProvider>[];
   final int class_;
   bool discoverable;
   int discoverableTimeout;
@@ -149,8 +206,16 @@ class MockBlueZAdapterObject extends MockBlueZObject {
       case 'org.bluez.BatteryProviderManager1':
         switch (methodCall.name) {
           case 'RegisterBatteryProvider':
+            var path = methodCall.values[0].asObjectPath();
+            batteryProviders.add(MockBlueZBatteryProvider(client!,
+                name: methodCall.sender!, path: path));
             return DBusMethodSuccessResponse();
           case 'UnregisterBatteryProvider':
+            var path = methodCall.values[0].asObjectPath();
+            var provider = batteryProviders
+                .firstWhere((provider) => provider.path == path);
+            await provider.close();
+            batteryProviders.remove(provider);
             return DBusMethodSuccessResponse();
           default:
             return DBusMethodErrorResponse.unknownMethod();
@@ -2611,23 +2676,86 @@ void main() {
     await bluez.start();
     addTearDown(() async => await bluez.close());
 
-    await bluez.addAdapter('hci0');
+    var a = await bluez.addAdapter('hci0');
+    await bluez.addDevice(a, address: 'DE:71:CE:00:00:01');
 
-    var client = BlueZClient(bus: DBusClient(clientAddress));
+    var bus = DBusClient(clientAddress);
+    var client = BlueZClient(bus: bus);
     await client.connect();
     addTearDown(() async => await client.close());
 
     expect(client.adapters, hasLength(1));
+    expect(client.devices, hasLength(1));
 
     var adapter = client.adapters[0];
+    var device = client.devices[0];
     var bpm = adapter.batteryProviderManager;
 
+    expect(bluez.adapters[0].batteryProviders, isEmpty);
     var provider = await bpm.registerBatteryProvider();
-    var battery = await provider.addBattery(source: 'Dummy Battery');
+    expect(bluez.adapters[0].batteryProviders, hasLength(1));
+
+    var bp = bluez.adapters[0].batteryProviders[0];
+    expect(bp.batteries, isEmpty);
+    var battery = await provider.addBattery(device);
+    // Ensure signals handled.
+    await bus.ping();
+    expect(bp.batteries, hasLength(1));
+    var b = bp.batteries.values.first;
+    expect(b.percentage, equals(0));
+    expect(b.source, equals(''));
 
     battery.percentage = 10;
+    // Ensure signals handled.
+    await bus.ping();
+    expect(b.percentage, equals(10));
 
     await provider.removeBattery(battery);
+    // Ensure signals handled.
+    await bus.ping();
+    expect(bp.batteries, isEmpty);
+
     await bpm.unregisterBatteryProvider(provider);
+    expect(bluez.adapters[0].batteryProviders, isEmpty);
+  });
+
+  test('battery - percentage and source', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    addTearDown(() async => await server.close());
+
+    var bluez = MockBlueZServer(clientAddress);
+    await bluez.start();
+    addTearDown(() async => await bluez.close());
+
+    var a = await bluez.addAdapter('hci0');
+    await bluez.addDevice(a, address: 'DE:71:CE:00:00:01');
+
+    var bus = DBusClient(clientAddress);
+    var client = BlueZClient(bus: bus);
+    await client.connect();
+    addTearDown(() async => await client.close());
+
+    expect(client.adapters, hasLength(1));
+    expect(client.devices, hasLength(1));
+
+    var adapter = client.adapters[0];
+    var device = client.devices[0];
+    var bpm = adapter.batteryProviderManager;
+
+    expect(bluez.adapters[0].batteryProviders, isEmpty);
+    var provider = await bpm.registerBatteryProvider();
+    expect(bluez.adapters[0].batteryProviders, hasLength(1));
+
+    var bp = bluez.adapters[0].batteryProviders[0];
+    expect(bp.batteries, isEmpty);
+    await provider.addBattery(device, percentage: 100, source: 'Dummy Battery');
+    // Ensure signals handled.
+    await bus.ping();
+    expect(bp.batteries, hasLength(1));
+    var b = bp.batteries.values.first;
+    expect(b.percentage, equals(100));
+    expect(b.source, equals('Dummy Battery'));
   });
 }
