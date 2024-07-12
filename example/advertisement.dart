@@ -39,6 +39,4 @@ void main() async {
     },
     localName: 'Example Advert',
   );
-
-  while (true) {}
 }
