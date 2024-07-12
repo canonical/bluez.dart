@@ -664,7 +664,7 @@ class BlueZAdvertisement extends DBusObject {
   }
 }
 
-/// Management for Battery provisioning
+/// BlueZ server object to register battery providers.
 class BlueZBatteryProviderManager {
   final String _batteryProviderManagerInterfaceName =
       'org.bluez.BatteryProviderManager1';
@@ -676,7 +676,7 @@ class BlueZBatteryProviderManager {
   BlueZBatteryProviderManager(this._client, this._object)
       : _nextBatteryProviderId = 0;
 
-  /// Registers a battery provider.
+  /// Registers a new battery provider.
   Future<BlueZBatteryProvider> registerBatteryProvider() async {
     var provider = BlueZBatteryProvider(_client,
         DBusObjectPath('/org/bluez/battery/provider$_nextBatteryProviderId'));
@@ -692,9 +692,7 @@ class BlueZBatteryProviderManager {
   }
 
   /// Unregisters a battery provider previously registered with
-  /// [registerBatteryProvider]. After unregistration, the
-  /// [BlueZBatteryProvider] objects provided by this client are
-  /// ignored by bluetoothd(8).
+  /// [registerBatteryProvider].
   Future<void> unregisterBatteryProvider(BlueZBatteryProvider provider) async {
     await _object.callMethod(_batteryProviderManagerInterfaceName,
         'UnregisterBatteryProvider', [provider.path],
@@ -704,7 +702,7 @@ class BlueZBatteryProviderManager {
   }
 }
 
-/// Class for providing a battery
+/// Object to register batteries.
 class BlueZBatteryProvider extends DBusObject {
   final BlueZClient _client;
   int _nextBatteryId = 0;
@@ -712,9 +710,9 @@ class BlueZBatteryProvider extends DBusObject {
   BlueZBatteryProvider(this._client, DBusObjectPath path)
       : super(path, isObjectManager: true);
 
-  /// Registers a new battery with an optional [source].
-  /// You can then use the registered battery to provide it
-  /// with [registerBatteryProvider].
+  /// Registers a new battery attached to a [device].
+  /// [percentage] is the amount of charge in this battery.
+  /// If provided, [source] describes where the battery information comes from.
   Future<BlueZBattery> addBattery(BlueZDevice device,
       {int percentage = 0, String source = ''}) async {
     var battery = BlueZBattery(
@@ -726,13 +724,13 @@ class BlueZBatteryProvider extends DBusObject {
     return battery;
   }
 
-  /// Unregisters the battery
+  /// Removes a [battery] previously added with [addBattery].
   Future<void> removeBattery(BlueZBattery battery) async {
     await _client._bus.unregisterObject(battery);
   }
 }
 
-/// A battery which is exposed over BlueZ
+/// A battery that is being reported over Bluetooth.
 class BlueZBattery extends DBusObject {
   final String _batteryInterfaceName = 'org.bluez.BatteryProvider1';
 
@@ -746,30 +744,29 @@ class BlueZBattery extends DBusObject {
     int percentage = 0,
     this.source = '',
   })  : _percentage = percentage,
-        super(path);
+        super(path) {
+    assert(percentage >= 0 && percentage <= 100);
+  }
 
-  /// The percentage of battery left as an unsigned 8-bit integer.
+  /// The amount of charge remaining as a percentage (0-100).
   int get percentage => _percentage;
 
   @override
   Map<String, Map<String, DBusValue>> get interfacesAndProperties =>
       <String, Map<String, DBusValue>>{_batteryInterfaceName: _getProperties()};
 
-  /// Sets the percentage of the battery left,
-  /// must be an unsigned 8-bit integer.
+  /// Sets the smound of charge remaintaing as a percentage (0-100).
   set percentage(int value) {
-    assert(value > -1 && value < 255);
+    assert(value >= 0 && value <= 100);
     _percentage = value;
     emitPropertiesChanged(_batteryInterfaceName, changedProperties: {
       'Percentage': DBusByte(value),
     });
   }
 
-  /// Describes where the battery information comes from.
+  /// Describes where the battery information comes from. (e.g. "HFP 1.7", "HID", or the profile UUID).
   /// This property is informational only and may be useful for debugging
-  /// purposes. Providers from org.bluez.BatteryProvider(5) may make use
-  /// of this property to indicate where the battery report comes from
-  /// (e.g. "HFP 1.7", "HID", or the profile UUID).
+  /// purposes.
   final String source;
 
   Map<String, DBusValue> _getProperties() {
