@@ -44,8 +44,3 @@ enum BlueZAdvertisementType {
   broadcast,
   peripheral,
 }
-
-final bluezAddressTypeMap = <String, BlueZAddressType>{
-  'public': BlueZAddressType.public,
-  'random': BlueZAddressType.random
-};

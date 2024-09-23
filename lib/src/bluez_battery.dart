@@ -1,5 +1,4 @@
-import 'package:bluez/bluez.dart';
-import 'package:dbus/dbus.dart';
+part of 'bluez_client.dart';
 
 /// BlueZ server object to register battery providers.
 class BlueZBatteryProviderManager {
@@ -7,7 +6,7 @@ class BlueZBatteryProviderManager {
       'org.bluez.BatteryProviderManager1';
 
   final BlueZClient _client;
-  final BlueZObject _object;
+  final _BlueZObject _object;
   int _nextBatteryProviderId;
 
   BlueZBatteryProviderManager(this._client, this._object)
@@ -19,7 +18,7 @@ class BlueZBatteryProviderManager {
         DBusObjectPath('/org/bluez/battery/provider$_nextBatteryProviderId'));
     _nextBatteryProviderId += 1;
 
-    await _client.bus.registerObject(provider);
+    await _client._bus.registerObject(provider);
 
     await _object.callMethod(_batteryProviderManagerInterfaceName,
         'RegisterBatteryProvider', [provider.path],
@@ -35,7 +34,7 @@ class BlueZBatteryProviderManager {
         'UnregisterBatteryProvider', [provider.path],
         replySignature: DBusSignature(''));
 
-    await _client.bus.unregisterObject(provider);
+    await _client._bus.unregisterObject(provider);
   }
 }
 
@@ -57,13 +56,13 @@ class BlueZBatteryProvider extends DBusObject {
         percentage: percentage, source: source);
     _nextBatteryId += 1;
 
-    await _client.bus.registerObject(battery);
+    await _client._bus.registerObject(battery);
     return battery;
   }
 
   /// Removes a [battery] previously added with [addBattery].
   Future<void> removeBattery(BlueZBattery battery) async {
-    await _client.bus.unregisterObject(battery);
+    await _client._bus.unregisterObject(battery);
   }
 }
 
@@ -110,7 +109,7 @@ class BlueZBattery extends DBusObject {
     return <String, DBusValue>{
       'Percentage': DBusByte(percentage),
       'Source': DBusString(source),
-      'Device': device.path
+      'Device': device._object.path
     };
   }
 
@@ -135,7 +134,7 @@ class BlueZBattery extends DBusObject {
       case 'Source':
         return DBusGetPropertyResponse(DBusString(source));
       case 'Device':
-        return DBusGetPropertyResponse(device.path);
+        return DBusGetPropertyResponse(device._object.path);
       default:
         return DBusMethodErrorResponse.unknownProperty();
     }

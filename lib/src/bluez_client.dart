@@ -1,7 +1,21 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:bluez/bluez.dart';
 import 'package:dbus/dbus.dart';
+
+part 'bluez_device.dart';
+part 'bluez_object.dart';
+part 'bluez_adapter.dart';
+part 'bluez_advertisement.dart';
+part 'bluez_agent.dart';
+part 'bluez_battery.dart';
+part 'bluez_characteristic.dart';
+part 'bluez_exception.dart';
+part 'bluez_gatt_descriptor.dart';
+part 'bluez_gatt_service.dart';
+part 'bluez_manufacturer_id.dart';
+part 'bluez_agent_object.dart';
 
 /// A client that connects to BlueZ.
 class BlueZClient {
@@ -20,14 +34,14 @@ class BlueZClient {
       _deviceRemovedStreamController.stream;
 
   /// The bus this client is connected to.
-  final DBusClient bus;
+  final DBusClient _bus;
   final bool _closeBus;
 
   /// The root D-Bus BlueZ object.
   late final DBusRemoteObjectManager _root;
 
   // Objects exported on the bus.
-  final _objects = <DBusObjectPath, BlueZObject>{};
+  final _objects = <DBusObjectPath, _BlueZObject>{};
 
   // Subscription to object manager signals.
   StreamSubscription? _objectManagerSubscription;
@@ -46,13 +60,10 @@ class BlueZClient {
 
   /// Creates a new BlueZ client. If [bus] is provided connect to the given D-Bus server.
   BlueZClient({DBusClient? bus})
-      : bus = bus ?? DBusClient.system(),
+      : _bus = bus ?? DBusClient.system(),
         _closeBus = bus == null {
-    _root = DBusRemoteObjectManager(
-      this.bus,
-      name: 'org.bluez',
-      path: DBusObjectPath('/'),
-    );
+    _root = DBusRemoteObjectManager(_bus,
+        name: 'org.bluez', path: DBusObjectPath('/'));
   }
 
   /// Connects to the BlueZ daemon.
@@ -70,8 +81,8 @@ class BlueZClient {
         if (object != null) {
           object.updateInterfaces(signal.interfacesAndProperties);
         } else {
-          object = BlueZObject(
-              bus, signal.changedPath, signal.interfacesAndProperties);
+          object = _BlueZObject(
+              _bus, signal.changedPath, signal.interfacesAndProperties);
           _objects[signal.changedPath] = object;
           if (_isAdapter(object)) {
             _adapterAddedStreamController.add(BlueZAdapter(this, object));
@@ -109,7 +120,7 @@ class BlueZClient {
     var objects = await _root.getManagedObjects();
     objects.forEach((objectPath, interfacesAndProperties) {
       _objects[objectPath] =
-          BlueZObject(bus, objectPath, interfacesAndProperties);
+          _BlueZObject(_bus, objectPath, interfacesAndProperties);
     });
 
     // Report initial adapters and devices.
@@ -162,7 +173,7 @@ class BlueZClient {
 
     _agent = _BlueZAgentObject(
         this, agent, path ?? DBusObjectPath('/org/bluez/Agent'));
-    await bus.registerObject(_agent!);
+    await _bus.registerObject(_agent!);
 
     var capabilityString = {
           BlueZAgentCapability.displayOnly: 'DisplayOnly',
@@ -214,11 +225,11 @@ class BlueZClient {
       _objectManagerSubscription = null;
     }
     if (_closeBus) {
-      await bus.close();
+      await _bus.close();
     }
   }
 
-  BlueZAdapter? getAdapter(DBusObjectPath objectPath) {
+  BlueZAdapter? _getAdapter(DBusObjectPath objectPath) {
     var object = _objects[objectPath];
     if (object == null) {
       return null;
@@ -226,7 +237,7 @@ class BlueZClient {
     return BlueZAdapter(this, object);
   }
 
-  bool _isAdapter(BlueZObject object) {
+  bool _isAdapter(_BlueZObject object) {
     return object.interfaces.containsKey('org.bluez.Adapter1');
   }
 
@@ -238,11 +249,11 @@ class BlueZClient {
     return BlueZDevice(this, object);
   }
 
-  bool _isDevice(BlueZObject object) {
+  bool _isDevice(_BlueZObject object) {
     return object.interfaces.containsKey('org.bluez.Device1');
   }
 
-  List<BlueZGattService> getGattServices(DBusObjectPath parentPath) {
+  List<BlueZGattService> _getGattServices(DBusObjectPath parentPath) {
     var services = <BlueZGattService>[];
     for (var object in _objects.values) {
       if (object.path.isInNamespace(parentPath) && _isGattService(object)) {
@@ -252,11 +263,11 @@ class BlueZClient {
     return services;
   }
 
-  bool _isGattService(BlueZObject object) {
+  bool _isGattService(_BlueZObject object) {
     return object.interfaces.containsKey('org.bluez.GattService1');
   }
 
-  List<BlueZGattCharacteristic> getGattCharacteristics(
+  List<BlueZGattCharacteristic> _getGattCharacteristics(
       DBusObjectPath parentPath) {
     var characteristics = <BlueZGattCharacteristic>[];
     for (var object in _objects.values) {
@@ -268,11 +279,11 @@ class BlueZClient {
     return characteristics;
   }
 
-  bool _isGattCharacteristic(BlueZObject object) {
+  bool _isGattCharacteristic(_BlueZObject object) {
     return object.interfaces.containsKey('org.bluez.GattCharacteristic1');
   }
 
-  List<BlueZGattDescriptor> getGattDescriptors(DBusObjectPath parentPath) {
+  List<BlueZGattDescriptor> _getGattDescriptors(DBusObjectPath parentPath) {
     var descriptors = <BlueZGattDescriptor>[];
     for (var object in _objects.values) {
       if (object.path.isInNamespace(parentPath) && _isGattDescriptor(object)) {
@@ -282,92 +293,7 @@ class BlueZClient {
     return descriptors;
   }
 
-  bool _isGattDescriptor(BlueZObject object) {
+  bool _isGattDescriptor(_BlueZObject object) {
     return object.interfaces.containsKey('org.bluez.GattDescriptor1');
-  }
-}
-
-class _BlueZAgentObject extends DBusObject {
-  final BlueZClient bluezClient;
-  final BlueZAgent agent;
-
-  _BlueZAgentObject(this.bluezClient, this.agent, DBusObjectPath path)
-      : super(path);
-
-  @override
-  Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
-    if (methodCall.interface != 'org.bluez.Agent1') {
-      return DBusMethodErrorResponse.unknownInterface();
-    }
-
-    if (methodCall.name == 'Release') {
-      if (methodCall.signature != DBusSignature('')) {
-        return DBusMethodErrorResponse.invalidArgs();
-      }
-      await agent.release();
-      return DBusMethodSuccessResponse();
-    } else if (methodCall.name == 'RequestPinCode') {
-      if (methodCall.signature != DBusSignature('o')) {
-        return DBusMethodErrorResponse.invalidArgs();
-      }
-      return (await agent.requestPinCode(
-              bluezClient._getDevice(methodCall.values[0].asObjectPath())!))
-          .response;
-    } else if (methodCall.name == 'DisplayPinCode') {
-      if (methodCall.signature != DBusSignature('os')) {
-        return DBusMethodErrorResponse.invalidArgs();
-      }
-      return (await agent.displayPinCode(
-              bluezClient._getDevice(methodCall.values[0].asObjectPath())!,
-              methodCall.values[1].asString()))
-          .response;
-    } else if (methodCall.name == 'RequestPasskey') {
-      if (methodCall.signature != DBusSignature('o')) {
-        return DBusMethodErrorResponse.invalidArgs();
-      }
-      return (await agent.requestPasskey(
-              bluezClient._getDevice(methodCall.values[0].asObjectPath())!))
-          .response;
-    } else if (methodCall.name == 'DisplayPasskey') {
-      if (methodCall.signature != DBusSignature('ouq')) {
-        return DBusMethodErrorResponse.invalidArgs();
-      }
-      await agent.displayPasskey(
-          bluezClient._getDevice(methodCall.values[0].asObjectPath())!,
-          methodCall.values[1].asUint32(),
-          methodCall.values[2].asUint16());
-      return DBusMethodSuccessResponse();
-    } else if (methodCall.name == 'RequestConfirmation') {
-      if (methodCall.signature != DBusSignature('ou')) {
-        return DBusMethodErrorResponse.invalidArgs();
-      }
-      return (await agent.requestConfirmation(
-              bluezClient._getDevice(methodCall.values[0].asObjectPath())!,
-              methodCall.values[1].asUint32()))
-          .response;
-    } else if (methodCall.name == 'RequestAuthorization') {
-      if (methodCall.signature != DBusSignature('o')) {
-        return DBusMethodErrorResponse.invalidArgs();
-      }
-      return (await agent.requestAuthorization(
-              bluezClient._getDevice(methodCall.values[0].asObjectPath())!))
-          .response;
-    } else if (methodCall.name == 'AuthorizeService') {
-      if (methodCall.signature != DBusSignature('os')) {
-        return DBusMethodErrorResponse.invalidArgs();
-      }
-      return (await agent.authorizeService(
-              bluezClient._getDevice(methodCall.values[0].asObjectPath())!,
-              BlueZUUID.fromString(methodCall.values[1].asString())))
-          .response;
-    } else if (methodCall.name == 'Cancel') {
-      if (methodCall.signature != DBusSignature('')) {
-        return DBusMethodErrorResponse.invalidArgs();
-      }
-      await agent.cancel();
-      return DBusMethodSuccessResponse();
-    } else {
-      return DBusMethodErrorResponse.unknownMethod();
-    }
   }
 }

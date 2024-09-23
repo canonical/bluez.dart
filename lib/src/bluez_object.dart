@@ -1,10 +1,12 @@
-import 'dart:async';
+part of 'bluez_client.dart';
 
-import 'package:bluez/bluez.dart';
-import 'package:dbus/dbus.dart';
-
-class BlueZObject extends DBusRemoteObject {
+class _BlueZObject extends DBusRemoteObject {
   final interfaces = <String, _BlueZInterface>{};
+
+  final _bluezAddressTypeMap = <String, BlueZAddressType>{
+    'public': BlueZAddressType.public,
+    'random': BlueZAddressType.random
+  };
 
   void updateInterfaces(
       Map<String, Map<String, DBusValue>> interfacesAndProperties) {
@@ -35,6 +37,15 @@ class BlueZObject extends DBusRemoteObject {
     if (interface != null) {
       interface.updateProperties(changedProperties);
     }
+  }
+
+  /// Get addressType
+  BlueZAddressType? getAddressType(String interface, String name) {
+    String? property = getStringProperty(interface, name);
+    if (property == null) {
+      return null;
+    }
+    return _bluezAddressTypeMap[property];
   }
 
   /// Gets a cached property.
@@ -200,7 +211,7 @@ class BlueZObject extends DBusRemoteObject {
     }
   }
 
-  BlueZObject(DBusClient client, DBusObjectPath path,
+  _BlueZObject(DBusClient client, DBusObjectPath path,
       Map<String, Map<String, DBusValue>> interfacesAndProperties)
       : super(client, name: 'org.bluez', path: path) {
     updateInterfaces(interfacesAndProperties);

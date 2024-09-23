@@ -1,5 +1,4 @@
-import 'package:bluez/bluez.dart';
-import 'package:dbus/dbus.dart';
+part of 'bluez_client.dart';
 
 class BlueZAgentResponse {
   final DBusMethodResponse response;

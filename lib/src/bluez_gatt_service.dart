@@ -1,11 +1,11 @@
-import 'package:bluez/bluez.dart';
+part of 'bluez_client.dart';
 
 /// A GATT service running on a BlueZ device.
 class BlueZGattService {
   final String _serviceInterfaceName = 'org.bluez.GattService1';
 
   final BlueZClient _client;
-  final BlueZObject _object;
+  final _BlueZObject _object;
 
   BlueZGattService(this._client, this._object);
 
@@ -21,5 +21,5 @@ class BlueZGattService {
 
   /// The Gatt characteristics provided by this service.
   List<BlueZGattCharacteristic> get characteristics =>
-      _client.getGattCharacteristics(_object.path);
+      _client._getGattCharacteristics(_object.path);
 }

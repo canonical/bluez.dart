@@ -1,7 +1,4 @@
-import 'dart:io';
-
-import 'package:bluez/bluez.dart';
-import 'package:dbus/dbus.dart';
+part of 'bluez_client.dart';
 
 /// A characteristic of a GATT service.
 class BlueZGattCharacteristic {
@@ -9,7 +6,7 @@ class BlueZGattCharacteristic {
       'org.bluez.GattCharacteristic1';
 
   final BlueZClient _client;
-  final BlueZObject _object;
+  final _BlueZObject _object;
 
   BlueZGattCharacteristic(this._client, this._object);
 
@@ -122,7 +119,7 @@ class BlueZGattCharacteristic {
 
   /// The Gatt descriptors provided by this characteristic.
   List<BlueZGattDescriptor> get descriptors =>
-      _client.getGattDescriptors(_object.path);
+      _client._getGattDescriptors(_object.path);
 
   /// Reads the value of the characteristic.
   Future<List<int>> readValue({int? offset}) async {

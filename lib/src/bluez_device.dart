@@ -1,17 +1,13 @@
-import 'package:bluez/bluez.dart';
-import 'package:dbus/dbus.dart';
+part of 'bluez_client.dart';
 
 /// A Bluetooth device.
 class BlueZDevice {
   final String _deviceInterfaceName = 'org.bluez.Device1';
 
   final BlueZClient _client;
-  final BlueZObject _object;
-  late DBusObjectPath path;
+  final _BlueZObject _object;
 
-  BlueZDevice(this._client, this._object) {
-    path = _object.path;
-  }
+  BlueZDevice(this._client, this._object);
 
   /// Stream of property names as their values change.
   Stream<List<String>> get propertiesChanged {
@@ -64,7 +60,7 @@ class BlueZDevice {
   BlueZAdapter get adapter {
     var objectPath =
         _object.getObjectPathProperty(_deviceInterfaceName, 'Adapter')!;
-    return _client.getAdapter(objectPath)!;
+    return _client._getAdapter(objectPath)!;
   }
 
   /// MAC address of this device.
@@ -73,9 +69,7 @@ class BlueZDevice {
 
   /// The Bluetooth device address type.
   BlueZAddressType get addressType =>
-      bluezAddressTypeMap[
-          _object.getStringProperty(_deviceInterfaceName, 'AddressType') ??
-              ''] ??
+      _object.getAddressType(_deviceInterfaceName, 'AddressType') ??
       BlueZAddressType.public;
 
   /// An alternative name for this device.
@@ -209,5 +203,5 @@ class BlueZDevice {
 
   /// The Gatt services provided by this device.
   List<BlueZGattService> get gattServices =>
-      _client.getGattServices(_object.path);
+      _client._getGattServices(_object.path);
 }

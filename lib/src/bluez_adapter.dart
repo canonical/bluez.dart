@@ -1,12 +1,11 @@
-import 'package:bluez/bluez.dart';
-import 'package:dbus/dbus.dart';
+part of 'bluez_client.dart';
 
 /// A Bluetooth adapter.
 class BlueZAdapter {
   final String _adapterInterfaceName = 'org.bluez.Adapter1';
 
   final BlueZClient _client;
-  final BlueZObject _object;
+  final _BlueZObject _object;
   BlueZAdvertisingManager? _advertisingManager;
   BlueZBatteryProviderManager? _batteryProviderManager;
 
@@ -92,7 +91,7 @@ class BlueZAdapter {
   /// Removes settings for [device] from this adapter.
   Future<void> removeDevice(BlueZDevice device) async {
     await _object.callMethod(
-        _adapterInterfaceName, 'RemoveDevice', [device.path],
+        _adapterInterfaceName, 'RemoveDevice', [device._object.path],
         replySignature: DBusSignature(''));
   }
 
@@ -102,9 +101,7 @@ class BlueZAdapter {
 
   /// The Bluetooth address type.
   BlueZAddressType get addressType =>
-      bluezAddressTypeMap[
-          _object.getStringProperty(_adapterInterfaceName, 'AddressType') ??
-              ''] ??
+      _object.getAddressType(_adapterInterfaceName, 'AddressType') ??
       BlueZAddressType.public;
 
   /// The alternative name for this adapter.

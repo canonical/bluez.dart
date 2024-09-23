@@ -1,3 +1,5 @@
+part of 'bluez_client.dart';
+
 /// Bluetooth manufacturer Id.
 class BlueZManufacturerId {
   final int id;
