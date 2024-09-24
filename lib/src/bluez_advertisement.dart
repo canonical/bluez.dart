@@ -64,7 +64,7 @@ class BlueZAdvertisingManager {
 
     _nextAdvertId += 1;
 
-    await _client.bus.registerObject(advert);
+    await _client.registerObject(advert);
 
     await _object.callMethod(_advertInterfaceName, 'RegisterAdvertisement',
         [advert.path, DBusDict.stringVariant({})],
@@ -80,7 +80,7 @@ class BlueZAdvertisingManager {
         _advertInterfaceName, 'UnregisterAdvertisement', [advert.path],
         replySignature: DBusSignature(''));
 
-    await _client.bus.unregisterObject(advert);
+    await _client.unregisterObject(advert);
   }
 }
 

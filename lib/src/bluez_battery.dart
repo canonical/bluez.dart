@@ -21,7 +21,7 @@ class BlueZBatteryProviderManager {
         DBusObjectPath('/org/bluez/battery/provider$_nextBatteryProviderId'));
     _nextBatteryProviderId += 1;
 
-    await _client.bus.registerObject(provider);
+    await _client.registerObject(provider);
 
     await _object.callMethod(_batteryProviderManagerInterfaceName,
         'RegisterBatteryProvider', [provider.path],
@@ -37,7 +37,7 @@ class BlueZBatteryProviderManager {
         'UnregisterBatteryProvider', [provider.path],
         replySignature: DBusSignature(''));
 
-    await _client.bus.unregisterObject(provider);
+    await _client.unregisterObject(provider);
   }
 }
 
@@ -59,13 +59,13 @@ class BlueZBatteryProvider extends DBusObject {
         percentage: percentage, source: source);
     _nextBatteryId += 1;
 
-    await _client.bus.registerObject(battery);
+    await _client.registerObject(battery);
     return battery;
   }
 
   /// Removes a [battery] previously added with [addBattery].
   Future<void> removeBattery(BlueZBattery battery) async {
-    await _client.bus.unregisterObject(battery);
+    await _client.unregisterObject(battery);
   }
 }
 
