@@ -1,11 +1,16 @@
-part of 'bluez_client.dart';
+import 'package:bluez/src/bluez_client.dart';
+import 'package:bluez/src/bluez_enums.dart';
+import 'package:bluez/src/bluez_manufacturer_id.dart';
+import 'package:bluez/src/bluez_object.dart';
+import 'package:bluez/src/bluez_uuid.dart';
+import 'package:dbus/dbus.dart';
 
 /// BlueZ server object to register advertisements.
 class BlueZAdvertisingManager {
   final String _advertInterfaceName = 'org.bluez.LEAdvertisingManager1';
 
   final BlueZClient _client;
-  final _BlueZObject _object;
+  final BlueZObject _object;
   int _nextAdvertId;
 
   BlueZAdvertisingManager(this._client, this._object) : _nextAdvertId = 0;
@@ -59,7 +64,7 @@ class BlueZAdvertisingManager {
 
     _nextAdvertId += 1;
 
-    await _client._bus.registerObject(advert);
+    await _client.bus.registerObject(advert);
 
     await _object.callMethod(_advertInterfaceName, 'RegisterAdvertisement',
         [advert.path, DBusDict.stringVariant({})],
@@ -75,7 +80,7 @@ class BlueZAdvertisingManager {
         _advertInterfaceName, 'UnregisterAdvertisement', [advert.path],
         replySignature: DBusSignature(''));
 
-    await _client._bus.unregisterObject(advert);
+    await _client.bus.unregisterObject(advert);
   }
 }
 

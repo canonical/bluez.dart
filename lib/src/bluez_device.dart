@@ -1,11 +1,19 @@
-part of 'bluez_client.dart';
+import 'package:bluez/src/bluez_adapter.dart';
+import 'package:bluez/src/bluez_client.dart';
+import 'package:bluez/src/bluez_enums.dart';
+import 'package:bluez/src/bluez_gatt_service.dart';
+import 'package:bluez/src/bluez_manufacturer_id.dart';
+import 'package:bluez/src/bluez_object.dart';
+import 'package:bluez/src/bluez_uuid.dart';
+import 'package:dbus/dbus.dart';
 
 /// A Bluetooth device.
 class BlueZDevice {
   final String _deviceInterfaceName = 'org.bluez.Device1';
 
   final BlueZClient _client;
-  final _BlueZObject _object;
+  final BlueZObject _object;
+  late DBusObjectPath path = _object.path;
 
   BlueZDevice(this._client, this._object);
 
@@ -60,7 +68,7 @@ class BlueZDevice {
   BlueZAdapter get adapter {
     var objectPath =
         _object.getObjectPathProperty(_deviceInterfaceName, 'Adapter')!;
-    return _client._getAdapter(objectPath)!;
+    return _client.getAdapter(objectPath)!;
   }
 
   /// MAC address of this device.
@@ -203,5 +211,5 @@ class BlueZDevice {
 
   /// The Gatt services provided by this device.
   List<BlueZGattService> get gattServices =>
-      _client._getGattServices(_object.path);
+      _client.getGattServices(_object.path);
 }

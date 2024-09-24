@@ -1,6 +1,10 @@
-part of 'bluez_client.dart';
+import 'dart:async';
 
-class _BlueZObject extends DBusRemoteObject {
+import 'package:bluez/src/bluez_enums.dart';
+import 'package:bluez/src/bluez_exception.dart';
+import 'package:dbus/dbus.dart';
+
+class BlueZObject extends DBusRemoteObject {
   final interfaces = <String, _BlueZInterface>{};
 
   final _bluezAddressTypeMap = <String, BlueZAddressType>{
@@ -211,7 +215,7 @@ class _BlueZObject extends DBusRemoteObject {
     }
   }
 
-  _BlueZObject(DBusClient client, DBusObjectPath path,
+  BlueZObject(DBusClient client, DBusObjectPath path,
       Map<String, Map<String, DBusValue>> interfacesAndProperties)
       : super(client, name: 'org.bluez', path: path) {
     updateInterfaces(interfacesAndProperties);

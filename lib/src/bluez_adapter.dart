@@ -1,11 +1,18 @@
-part of 'bluez_client.dart';
+import 'package:bluez/src/bluez_advertisement.dart';
+import 'package:bluez/src/bluez_battery.dart';
+import 'package:bluez/src/bluez_client.dart';
+import 'package:bluez/src/bluez_device.dart';
+import 'package:bluez/src/bluez_enums.dart';
+import 'package:bluez/src/bluez_object.dart';
+import 'package:bluez/src/bluez_uuid.dart';
+import 'package:dbus/dbus.dart';
 
 /// A Bluetooth adapter.
 class BlueZAdapter {
   final String _adapterInterfaceName = 'org.bluez.Adapter1';
 
   final BlueZClient _client;
-  final _BlueZObject _object;
+  final BlueZObject _object;
   BlueZAdvertisingManager? _advertisingManager;
   BlueZBatteryProviderManager? _batteryProviderManager;
 
@@ -91,7 +98,7 @@ class BlueZAdapter {
   /// Removes settings for [device] from this adapter.
   Future<void> removeDevice(BlueZDevice device) async {
     await _object.callMethod(
-        _adapterInterfaceName, 'RemoveDevice', [device._object.path],
+        _adapterInterfaceName, 'RemoveDevice', [device.path],
         replySignature: DBusSignature(''));
   }
 

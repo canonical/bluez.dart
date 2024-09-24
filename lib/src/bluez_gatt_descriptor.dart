@@ -1,10 +1,12 @@
-part of 'bluez_client.dart';
+import 'package:bluez/src/bluez_object.dart';
+import 'package:bluez/src/bluez_uuid.dart';
+import 'package:dbus/dbus.dart';
 
 /// A GATT characteristic descriptor.
 class BlueZGattDescriptor {
   final String _gattDescriptorInterfaceName = 'org.bluez.GattDescriptor1';
 
-  final _BlueZObject _object;
+  final BlueZObject _object;
 
   BlueZGattDescriptor(this._object);
 
