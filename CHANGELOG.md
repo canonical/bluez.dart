@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.3
+
+* Add BlueZAdvertisingManager.
+* Split classes into separate files.
+* Update dbus to 0.7.11.
+* Remove unnecessary loop in example.
+
 ## 0.8.2
 
 * Add BlueZGattCharacteristic.mtu.
