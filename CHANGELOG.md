@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.0
+
+* Update to dbus 0.8.0
+
 ## 0.8.3
 
 * Add BlueZAdvertisingManager.
